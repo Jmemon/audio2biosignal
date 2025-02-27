@@ -1,0 +1,55 @@
+experiment_name: "Example1"
+seed: 42
+
+model:
+  encoder_type: "wavenet"
+  decoder_type: "cnn"
+  encoder_params:
+    type: "wavenet"
+    # Add encoder-specific parameters
+  decoder_params:
+    type: "cnn"
+    # Add decoder-specific parameters
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.0001
+  weight_decay: 0.01
+
+data:
+  train_datasets:
+    - hku956
+  val_datasets:
+    - hku956
+  test_datasets:
+    - hku956
+  batch_size: 32
+  num_workers: 4
+  prefetch_size: 2
+
+loss:
+  name: "mse"
+
+hardware:
+  device: "cuda"
+  precision: "fp16"
+  distributed: False
+  num_gpus: 1
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_run_name: "Example1_Run"
+  log_every_n_steps: 50
+  train_metrics:
+    - "loss"
+  val_metrics:
+    - "loss"
+    - "mse"
+
+checkpoint:
+  save_top_k: 3
+  checkpoint_dir: "checkpoints/example1"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: True
+  save_every_n_steps: 1000

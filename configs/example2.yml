@@ -1,0 +1,56 @@
+experiment_name: "Example2"
+seed: 42
+
+model:
+  encoder_type: "transformer"
+  decoder_type: "lstm"
+  encoder_params:
+    type: "transformer"
+    # Add encoder-specific parameters
+  decoder_params:
+    type: "lstm"
+    # Add decoder-specific parameters
+
+optimizer:
+  name: "adam"
+  learning_rate: 0.0005
+  weight_decay: 0.001
+
+data:
+  train_datasets:
+    - pmemo2019
+  val_datasets:
+    - pmemo2019
+  test_datasets:
+    - pmemo2019
+  batch_size: 64
+  num_workers: 8
+  prefetch_size: 4
+
+loss:
+  name: "huber"
+
+hardware:
+  device: "cuda"
+  precision: "fp16"
+  distributed: True
+  num_gpus: 2
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_run_name: "Example2_Run"
+  log_every_n_steps: 25
+  train_metrics:
+    - "loss"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"
+
+checkpoint:
+  save_top_k: 5
+  checkpoint_dir: "checkpoints/example2"
+  monitor: "val_dtw"
+  mode: "min"
+  save_last: True
+  save_every_n_steps: 500

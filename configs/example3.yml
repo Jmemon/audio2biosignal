@@ -1,0 +1,62 @@
+experiment_name: "Example3"
+seed: 42
+
+model:
+  encoder_type: "wavenet"
+  decoder_type: "transformer"
+  encoder_params:
+    type: "wavenet"
+    # Add encoder-specific parameters
+  decoder_params:
+    type: "transformer"
+    # Add decoder-specific parameters
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.0002
+  weight_decay: 0.005
+  scheduler: "cosine"
+  warmup_steps: 100
+
+data:
+  train_datasets:
+    - hku956
+    - pmemo2019
+  val_datasets:
+    - hku956
+  test_datasets:
+    - pmemo2019
+  batch_size: 48
+  num_workers: 6
+  prefetch_size: 3
+
+loss:
+  name: "l1"
+
+hardware:
+  device: "cuda"
+  precision: "bf16"
+  distributed: False
+  num_gpus: 1
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_run_name: "Example3_Run"
+  wandb_tags: ["mixed_dataset", "wavenet", "transformer"]
+  log_every_n_steps: 50
+  train_metrics:
+    - "loss"
+    - "mse"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"
+    - "frechet"
+
+checkpoint:
+  save_top_k: 3
+  checkpoint_dir: "checkpoints/example3"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: True
+  save_every_n_steps: 1000
