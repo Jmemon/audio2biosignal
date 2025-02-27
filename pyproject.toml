@@ -1,0 +1,12 @@
+[project]
+name = "audio2biosignal"
+version = "0.1.0"
+description = "A system to train and evaluate 3 models that translate audio to ECG, EDA, and EEG."
+authors = [
+    { name = "JP Memon", email = "johnpmemon@gmail.com" }
+]
+dependencies = [
+    "pydantic",
+    "torch",
+    "transformers"
+]
