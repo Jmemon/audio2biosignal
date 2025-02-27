@@ -4,14 +4,18 @@
 Build a system to train and evaluate a model that translate audio to EDA signals.
 
 ## Mid-Level Objective
-- Create a datasets models, classes, and dataloader for each dataset with eda data
-- Create a trainer invocation script configurable by a config fig file that includes model fields, optimizer fields, datasets fields, hardware fields, loss fields, train hyperparameters, wandb logging fields, checkpoint fields.
+- Create dataset models, classes, and dataloader for each dataset with eda data
+- Create model classes, registry, and optimizer builder
+- Create loss classes
+- Create optimizer classes
+- Create a trainer invocation script configurable by a config fig file that includes model fields, optimizer fields, datasets fields, hardware fields, loss fields, train hyperparameters, wandb logging fields, checkpoint fields. Properly instantiating all components based on config file and making sure nothing conflicts. Then invoking the train/eval loop.
 
 ## Implementation Notes
-- Use pyproject.toml for dependencies. 
+- Use pyproject.toml for dependencies (add minimally where needed). 
 - Use src/ for code.
 - Use HF Trainer for training.
 - Use torchaudio for audio processing where possible (else librosa).
+- ANYWHERE you have to make an assumption, include a warning using the warn package. Eg assuming what column of a csv file contains eda data.
 
 ## Context
 ### Beginning Context
