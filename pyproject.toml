@@ -8,5 +8,9 @@ authors = [
 dependencies = [
     "pydantic",
     "torch",
-    "transformers"
+    "transformers",
+    "torchaudio",
+    "scipy",
+    "pandas",
+    "pyyaml"
 ]
