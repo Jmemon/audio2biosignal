@@ -10,11 +10,11 @@ class HKU956Dataset(Dataset):
         # eda_files: List of tuples (subject_id, file_path)
         # audio_files: Dict mapping song_id to URL
 
-    def load_audio_file(self, song_id: str) -> torch.Tensor:
+    def _load_audio_file(self, song_id: str) -> torch.Tensor:
         # Download and preprocess audio file using preprocess_audio
         pass
 
-    def load_eda_file(self, subject_id: str, song_id: str) -> torch.Tensor:
+    def _load_eda_file(self, subject_id: str, song_id: str) -> torch.Tensor:
         # Load and preprocess EDA data using preprocess_eda
         pass
 

@@ -8,11 +8,11 @@ class PMEmo2019Dataset(Dataset):
         self.split = split
         # Implement logic similar to HKU956Dataset
 
-    def load_audio_file(self, song_id: str) -> torch.Tensor:
+    def _load_audio_file(self, song_id: str) -> torch.Tensor:
         # Mirror HKU956Dataset.load_audio_file
         pass
 
-    def load_eda_file(self, song_id: str) -> torch.Tensor:
+    def _load_eda_file(self, song_id: str) -> torch.Tensor:
         # Mirror HKU956Dataset.load_eda_file
         pass
 
