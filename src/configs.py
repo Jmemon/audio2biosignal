@@ -82,10 +82,8 @@ class LossConfig(BaseModel):
     name: Literal["mse", "l1", "huber", "custom"] = "mse"
 
 class ModelConfig(BaseModel):
-    encoder_type: Literal["wavenet", "transformer"]
-    decoder_type: Literal["cnn", "lstm", "transformer"]
-    encoder_params: Dict
-    decoder_params: Dict
+    architecture: Literal["tcn", "wavenet"]
+    params: Dict[str, Any]
 
 class LoggingConfig(BaseModel):
     wandb_project: str
