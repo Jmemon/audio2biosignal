@@ -46,8 +46,8 @@ def main():
     model = get_model_from_name("claude-3-5-sonnet-latest")
     coder = Coder(model=model)
     
-    # Create empty prompt string
-    prompt = ""
+    # Create prompt string with experiment description
+    prompt = f"""CREATE configs/{experiment_name}.yml ensuring that it satisfies {args.description} and making intelligent choices for any unspecified fields keeping in mind the overall purpose of this repo: to train model that translate audio as MFCCs to EDA signals."""
     
     # TODO: Implement the rest of the functionality
 
