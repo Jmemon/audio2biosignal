@@ -39,13 +39,13 @@ def main():
 
 def get_read_only_files() -> List[str]:
     """
-    Get a list of read-only files including configs/*.yml and src/configs.py
+    Get a list of read-only files including up to 5 configs/*.yml files and src/configs.py
     """
     read_only_files = []
     
-    # Add all YAML files in configs directory
+    # Add up to 5 YAML files from configs directory
     config_files = glob.glob("configs/*.yml")
-    read_only_files.extend(config_files)
+    read_only_files.extend(config_files[:5])
     
     # Add src/configs.py
     read_only_files.append("src/configs.py")
