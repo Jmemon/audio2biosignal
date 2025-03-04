@@ -12,5 +12,6 @@ dependencies = [
     "torchaudio",
     "scipy",
     "pandas",
-    "pyyaml"
+    "pyyaml",
+    "scipy"
 ]
