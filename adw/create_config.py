@@ -8,7 +8,7 @@ import sys
 from typing import List
 from pathlib import Path
 from aider.coders import Coder
-from aider.models import get_model_from_name
+from aider.models import Model
 
 def main():
     """
@@ -42,7 +42,7 @@ def main():
     read_only_files = get_read_only_files()
     
     # Create aider Coder instance
-    model = get_model_from_name("claude-3-5-sonnet-latest")
+    model = Model("sonnet")
     coder = Coder.create(
         main_model=model,
         edit_format="diff",
