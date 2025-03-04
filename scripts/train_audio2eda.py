@@ -1,8 +1,13 @@
 import argparse
 import yaml
 import os
+import sys
 import wandb
 import torch
+
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.configs import TrainConfig, AudioEDAFeatureConfig
 from src.data.dataloader import DataLoaderBuilder
 from src.optimizer import OptimizerBuilder
