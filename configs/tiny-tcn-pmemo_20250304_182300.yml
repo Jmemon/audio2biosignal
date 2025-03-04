@@ -1,0 +1,60 @@
+experiment_name: "TinyTCN_PMEmo2019"
+seed: 42
+
+model:
+  architecture: "tcn"
+  params:
+    input_size: 40  # MFCC features
+    output_size: 1  # EDA signal output
+    num_blocks: 3   # Reduced number of blocks for a tiny model
+    num_channels: 32  # Smaller channel size for a tiny model
+    kernel_size: 3
+    dropout: 0.1    # Lower dropout for a smaller model
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.0002
+  weight_decay: 0.005
+  scheduler: "cosine"
+  warmup_steps: 50
+
+data:
+  train_datasets:
+    - pmemo2019
+  val_datasets:
+    - pmemo2019
+  test_datasets:
+    - pmemo2019
+  num_workers: 2  # Reduced for MPS
+  prefetch_size: 2
+
+batch_size: 16  # Smaller batch size for a tiny model on MPS
+
+loss:
+  name: "mse"  # Mean squared error is common for regression tasks
+
+hardware:
+  device: "mps"  # Apple Silicon GPU
+  precision: "fp32"  # MPS only supports fp32
+  distributed: false  # MPS doesn't support distributed training
+  num_gpus: 1  # MPS only supports a single GPU
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_run_name: "TinyTCN_PMEmo2019_Run"
+  wandb_tags: ["tiny_model", "tcn", "pmemo2019", "mps"]
+  log_every_n_steps: 25
+  train_metrics:
+    - "loss"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"  # Dynamic Time Warping for time series comparison
+
+checkpoint:
+  save_top_k: 3
+  checkpoint_dir: "checkpoints/tiny-tcn-pmemo"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  save_every_n_steps: 500
