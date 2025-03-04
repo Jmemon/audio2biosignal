@@ -33,11 +33,6 @@ def main():
         # Use current datetime for unique name
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         experiment_name = f"example_{current_time}"
-        # Double check it doesn't exist (extremely unlikely)
-        if (configs_dir / f"{experiment_name}.yml").exists():
-            # Add random number as fallback
-            rand_int = random.randint(1, 10000)
-            experiment_name = f"{experiment_name}_{rand_int}"
     
     # Create list of read-only files
     read_only_files = get_read_only_files()
