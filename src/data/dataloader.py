@@ -1,12 +1,13 @@
 from torch.utils.data import DataLoader
 import torch
+from typing import List
 from src.configs import DataConfig, AudioEDAFeatureConfig, HKU956Config, PMEmo2019Config
 from src.data.datasets.hku956 import HKU956Dataset, collate_fn as hku_collate_fn
 from src.data.datasets.pmemo2019 import PMEmo2019Dataset, collate_fn as pmemo_collate_fn
 
 class DataLoaderBuilder:
     @staticmethod
-    def build(data_config: DataConfig, feature_config: AudioEDAFeatureConfig, split: str):
+    def build(data_config: DataConfig, feature_config: AudioEDAFeatureConfig, split: str) -> List[DataLoader]:
         dataset_mapping = {
             'hku956': (HKU956Dataset, hku_collate_fn, HKU956Config()),
             'pmemo2019': (PMEmo2019Dataset, pmemo_collate_fn, PMEmo2019Config()),

@@ -4,6 +4,8 @@ import os
 import sys
 import wandb
 import torch
+from typing import List
+from torch.utils.data import DataLoader, ConcatDataset
 from dotenv import load_dotenv
 
 # Add the project root directory to the Python path
@@ -55,8 +57,15 @@ def main():
 
     # Instantiate data loaders
     feature_config = AudioEDAFeatureConfig()
-    train_loader = DataLoaderBuilder.build(train_config.data, feature_config, split='train')
-    val_loader = DataLoaderBuilder.build(train_config.data, feature_config, split='val')
+    train_loaders: List[DataLoader] = DataLoaderBuilder.build(train_config.data, feature_config, split='train')
+    val_loaders: List[DataLoader] = DataLoaderBuilder.build(train_config.data, feature_config, split='val')
+    
+    # Combine datasets from multiple loaders if needed
+    train_datasets = [loader.dataset for loader in train_loaders]
+    val_datasets = [loader.dataset for loader in val_loaders]
+    
+    combined_train_dataset = train_datasets[0] if len(train_datasets) == 1 else ConcatDataset(train_datasets)
+    combined_val_dataset = val_datasets[0] if len(val_datasets) == 1 else ConcatDataset(val_datasets)
 
     # Ensure checkpoint directory exists
     os.makedirs(train_config.checkpoint.checkpoint_dir, exist_ok=True)
@@ -91,8 +100,8 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=train_loader.dataset,
-        eval_dataset=val_loader.dataset,
+        train_dataset=combined_train_dataset,
+        eval_dataset=combined_val_dataset,
         optimizers=(optimizer, scheduler),
         compute_metrics=None,  # Define if needed
     )
