@@ -13,5 +13,7 @@ dependencies = [
     "scipy",
     "pandas",
     "pyyaml",
-    "scipy"
+    "scipy",
+    "boto3",
+    "wandb"
 ]

@@ -1,19 +1,22 @@
 import torch
 import pandas as pd
-from scipy.signal import butter, filtfilt
-from src.configs import EDAFeatureConfig, AudioFeatureConfig
+from scipy.signal import butter, filtfilt, resample
+from pathlib import Path
+from src.configs import AudioEDAFeatureConfig
 
-def preprocess_eda(eda_file_path: str, eda_feature_config: EDAFeatureConfig,
-                   audio_feature_config: AudioFeatureConfig) -> torch.Tensor:
+def preprocess_eda(eda_file_path: Path, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
     eda_data = pd.read_csv(eda_file_path).values.squeeze()
-    # Resampling logic here (if needed)
-    if eda_feature_config.eda_normalize:
+    original_sample_rate = 1000  # Assuming original EDA sample rate
+    if original_sample_rate != feature_config.mutual_sample_rate:
+        resample_factor = feature_config.mutual_sample_rate / original_sample_rate
+        eda_data = resample(eda_data, int(len(eda_data) * resample_factor))
+    if feature_config.eda_normalize:
         eda_data = (eda_data - eda_data.mean()) / eda_data.std()
-    if eda_feature_config.filter_highpass:
-        b, a = butter(2, 0.05, btype='highpass', fs=audio_feature_config.audio_sample_rate)
+    if feature_config.filter_highpass:
+        b, a = butter(2, 0.05, btype='highpass', fs=feature_config.mutual_sample_rate)
         eda_data = filtfilt(b, a, eda_data)
-    if eda_feature_config.filter_lowpass:
-        b, a = butter(2, 8, btype='lowpass', fs=audio_feature_config.audio_sample_rate)
+    if feature_config.filter_lowpass:
+        b, a = butter(2, 8, btype='lowpass', fs=feature_config.mutual_sample_rate)
         eda_data = filtfilt(b, a, eda_data)
     eda_tensor = torch.tensor(eda_data).unsqueeze(0)  # Shape: (1, time_steps)
     return eda_tensor

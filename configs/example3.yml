@@ -2,14 +2,14 @@ experiment_name: "Example3"
 seed: 42
 
 model:
-  encoder_type: "wavenet"
-  decoder_type: "transformer"
-  encoder_params:
-    type: "wavenet"
-    # Add encoder-specific parameters
-  decoder_params:
-    type: "transformer"
-    # Add decoder-specific parameters
+  architecture: "tcn"
+  params:
+    input_size: 40
+    output_size: 1
+    num_blocks: 8
+    num_channels: 128
+    kernel_size: 5
+    dropout: 0.3
 
 optimizer:
   name: "adamw"
@@ -26,9 +26,10 @@ data:
     - hku956
   test_datasets:
     - pmemo2019
-  batch_size: 48
   num_workers: 6
   prefetch_size: 3
+
+batch_size: 48
 
 loss:
   name: "l1"

@@ -2,14 +2,14 @@ experiment_name: "Example1"
 seed: 42
 
 model:
-  encoder_type: "wavenet"
-  decoder_type: "cnn"
-  encoder_params:
-    type: "wavenet"
-    # Add encoder-specific parameters
-  decoder_params:
-    type: "cnn"
-    # Add decoder-specific parameters
+  architecture: "tcn"
+  params:
+    input_size: 40  # Number of input features (e.g., MFCC features)
+    output_size: 1  # EDA signal output
+    num_blocks: 5
+    num_channels: 64
+    kernel_size: 3
+    dropout: 0.2
 
 optimizer:
   name: "adamw"
@@ -23,9 +23,10 @@ data:
     - hku956
   test_datasets:
     - hku956
-  batch_size: 32
   num_workers: 4
   prefetch_size: 2
+
+batch_size: 32
 
 loss:
   name: "mse"

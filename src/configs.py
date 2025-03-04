@@ -1,6 +1,10 @@
+from enum import Enum
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Literal, Union, Any
-from src.data.datasets.types import DatasetType
+
+class DatasetType(Enum):
+    HKU956 = 'hku956'
+    PMEmo2019 = 'pmemo2019'
 
 class DatasetConfig(BaseModel):
     dataset_name: str
@@ -44,15 +48,18 @@ class PMEmo2019Config(DatasetConfig):
     split_ratios: List[float] = [0.8, 0.1, 0.1]
     seed: int = 42
 
-class AudioFeatureConfig(BaseModel):
-    audio_sample_rate: int = 44100  # 44.1 kHz
+class AudioEDAFeatureConfig(BaseModel):
+    # Mutual configurations
+    mutual_sample_rate: int = 200  # Hz
+
+    # Audio configurations
     audio_normalize: bool = True
     audio_n_mfcc: int = 40
     audio_n_mels: int = 128
     audio_window_size: int = 400  # STFT window size
     audio_hop_length: int = 160   # STFT hop length
 
-class EDAFeatureConfig(BaseModel):
+    # EDA configurations
     eda_window_size: int = 400
     eda_hop_length: int = 160
     eda_normalize: bool = True
@@ -63,7 +70,6 @@ class DataConfig(BaseModel):
     train_datasets: List[DatasetType]
     val_datasets: List[DatasetType]
     test_datasets: List[DatasetType]
-    batch_size: int = 32
     num_workers: int = 4
     prefetch_size: int = 2
 
@@ -84,6 +90,25 @@ class LossConfig(BaseModel):
 class ModelConfig(BaseModel):
     architecture: Literal["tcn", "wavenet"]
     params: Dict[str, Any]
+
+    @validator('params')
+    def validate_params(cls, v, values):
+        architecture = values.get('architecture')
+        if architecture == 'tcn':
+            required_params = ["input_size", "output_size", "num_blocks", "num_channels", "kernel_size", "dropout"]
+        elif architecture == 'wavenet':
+            required_params = [
+                "num_stacks", "num_layers_per_stack", "residual_channels", "skip_channels",
+                "kernel_size", "dilation_base", "dropout_rate", "input_channels",
+                "output_channels", "use_bias"
+            ]
+        else:
+            raise ValueError(f"Invalid model architecture: {architecture}")
+
+        missing = [key for key in required_params if key not in v]
+        if missing:
+            raise ValueError(f"Missing parameters for {architecture} model: {missing}")
+        return v
 
 class LoggingConfig(BaseModel):
     wandb_project: str
@@ -122,6 +147,7 @@ class TrainConfig(BaseModel):
     hardware: HardwareConfig
     logging: LoggingConfig
     checkpoint: CheckpointConfig
+    batch_size: int = 32
 
     max_epochs: int = 100
     gradient_clip_val: float = 1.0

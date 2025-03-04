@@ -1,5 +1,5 @@
 from torch.optim import Adam, AdamW, SGD, Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler, CosineAnnealingLR, StepLR, ExponentialLR
 from typing import Tuple, Optional
 from src.configs import OptimizerConfig
 
@@ -20,6 +20,14 @@ class OptimizerBuilder:
                             momentum=optimizer_config.momentum)
         else:
             raise ValueError(f"Unsupported optimizer: {optimizer_config.name}")
+
         # Instantiate scheduler if necessary
-        scheduler = None  # Implement scheduler logic
+        scheduler = None
+        if optimizer_config.scheduler == "cosine":
+            scheduler = CosineAnnealingLR(optimizer, T_max=100)  # Default T_max
+        elif optimizer_config.scheduler == "step":
+            scheduler = StepLR(optimizer, step_size=30, gamma=0.1)  # Default values
+        elif optimizer_config.scheduler == "exponential":
+            scheduler = ExponentialLR(optimizer, gamma=0.95)  # Default gamma
+
         return optimizer, scheduler
