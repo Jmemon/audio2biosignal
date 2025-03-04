@@ -10,6 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from aider.coders import Coder
 from aider.models import Model
+import anthropic
 
 def main():
     """
@@ -38,9 +39,12 @@ def main():
     # Generate a unique experiment name if not provided
     experiment_name = args.name
     if not experiment_name:
-        # Use current datetime for unique name
+        # Generate a brief name using Haiku to summarize the description
+        experiment_name = generate_experiment_name(args.description)
+        
+        # Add timestamp for uniqueness
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        experiment_name = f"{current_time}"
+        experiment_name = f"{experiment_name}_{current_time}"
     
     # Create list of read-only files
     read_only_files = get_read_only_files()
@@ -65,6 +69,64 @@ def main():
     
     response = coder.run(prompt)
     print(f"Configuration generated for {experiment_name}")
+
+def generate_experiment_name(description: str) -> str:
+    """
+    Generate a brief experiment name by using Anthropic's Haiku API to summarize the description.
+    
+    Args:
+        description: The experiment description to summarize
+        
+    Returns:
+        A brief, slug-friendly name for the experiment
+    """
+    # Get API key from environment
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("Warning: ANTHROPIC_API_KEY not found in environment. Using fallback naming.")
+        return "audio2eda"
+    
+    try:
+        # Initialize Anthropic client
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        # Create prompt for Haiku
+        prompt = f"""
+        Summarize this experiment description into a very brief, memorable name (3-4 words max) 
+        that captures its essence. Use only lowercase letters, numbers, and hyphens (no spaces).
+        
+        Description: {description}
+        
+        Name:
+        """
+        
+        # Call Haiku API
+        response = client.messages.create(
+            model="claude-haiku-v1",
+            max_tokens=30,
+            temperature=0.7,
+            system="You create brief, memorable experiment names.",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        # Extract and clean the name
+        name = response.content[0].text.strip().lower()
+        
+        # Remove any non-alphanumeric characters except hyphens
+        import re
+        name = re.sub(r'[^a-z0-9\-]', '-', name)
+        
+        # Ensure no consecutive hyphens
+        name = re.sub(r'-+', '-', name)
+        
+        # Trim hyphens from start and end
+        name = name.strip('-')
+        
+        return name if name else "audio2eda"
+    
+    except Exception as e:
+        print(f"Error generating experiment name: {e}")
+        return "audio2eda"
 
 def ensure_project_root():
     """
