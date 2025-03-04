@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Dict, Optional, Literal, Union, Any
 
 class DatasetType(Enum):
