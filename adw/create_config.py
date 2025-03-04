@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import glob
+import random
 from typing import List
 from pathlib import Path
 from aider.coders import Coder
@@ -19,11 +20,21 @@ def main():
     )
     parser.add_argument(
         "--name", "-n", 
-        default="experiment",
         help="Name for the experiment (used for the config filename)"
     )
     
     args = parser.parse_args()
+    
+    # Generate a unique experiment name if not provided
+    experiment_name = args.name
+    if not experiment_name:
+        import random
+        configs_dir = Path("configs")
+        while True:
+            rand_int = random.randint(1, 10000)
+            experiment_name = f"example_{rand_int}"
+            if not (configs_dir / f"{experiment_name}.yml").exists():
+                break
     
     # Create list of read-only files
     read_only_files = get_read_only_files()
