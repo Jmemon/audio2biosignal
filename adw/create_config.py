@@ -34,10 +34,9 @@ def main():
     # Generate a unique experiment name if not provided
     experiment_name = args.name
     if not experiment_name:
-        configs_dir = Path("configs")
         # Use current datetime for unique name
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        experiment_name = f"example_{current_time}"
+        experiment_name = f"{current_time}"
     
     # Create list of read-only files
     read_only_files = get_read_only_files()
@@ -47,7 +46,7 @@ def main():
     coder = Coder(model=model)
     
     # Create prompt string with experiment description
-    prompt = f"""CREATE configs/{experiment_name}.yml ensuring that it satisfies {args.description} and making intelligent choices for any unspecified fields keeping in mind the overall purpose of this repo: to train model that translate audio as MFCCs to EDA signals."""
+    prompt = f"""CREATE configs/{experiment_name}.yml ensuring that it satisfies ```{args.description}``` and making intelligent choices for any unspecified fields keeping in mind the overall purpose of this repo: to train model that translate audio as MFCCs to EDA signals."""
     
     # TODO: Implement the rest of the functionality
 
