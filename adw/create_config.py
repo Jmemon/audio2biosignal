@@ -7,6 +7,7 @@ import os
 import sys
 from typing import List
 from pathlib import Path
+from dotenv import load_dotenv
 from aider.coders import Coder
 from aider.models import Model
 
@@ -14,6 +15,9 @@ def main():
     """
     Main function to parse command line arguments for experiment configuration.
     """
+    # Load environment variables
+    load_dotenv()
+    
     # Verify we're in the project root directory
     ensure_project_root()
     
