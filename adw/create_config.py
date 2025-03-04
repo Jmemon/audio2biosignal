@@ -2,6 +2,7 @@
 import argparse
 import glob
 import random
+import datetime
 from typing import List
 from pathlib import Path
 from aider.coders import Coder
@@ -28,13 +29,15 @@ def main():
     # Generate a unique experiment name if not provided
     experiment_name = args.name
     if not experiment_name:
-        import random
         configs_dir = Path("configs")
-        while True:
+        # Use current datetime for unique name
+        current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        experiment_name = f"example_{current_time}"
+        # Double check it doesn't exist (extremely unlikely)
+        if (configs_dir / f"{experiment_name}.yml").exists():
+            # Add random number as fallback
             rand_int = random.randint(1, 10000)
-            experiment_name = f"example_{rand_int}"
-            if not (configs_dir / f"{experiment_name}.yml").exists():
-                break
+            experiment_name = f"{experiment_name}_{rand_int}"
     
     # Create list of read-only files
     read_only_files = get_read_only_files()
