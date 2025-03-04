@@ -32,10 +32,7 @@ loss:
   name: "mse"
 
 hardware:
-  device: "cuda"
-  precision: "fp16"
-  distributed: False
-  num_gpus: 1
+  device: "mps"
 
 logging:
   wandb_project: "audio2eda"
