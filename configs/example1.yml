@@ -33,6 +33,9 @@ loss:
 
 hardware:
   device: "mps"
+  precision: "fp32"  # MPS only supports fp32
+  distributed: False # MPS doesn't support distributed training
+  num_gpus: 1        # MPS only supports a single GPU
 
 logging:
   wandb_project: "audio2eda"
