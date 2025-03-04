@@ -91,9 +91,10 @@ class ModelConfig(BaseModel):
     architecture: Literal["tcn", "wavenet"]
     params: Dict[str, Any]
 
-    @validator('params')
-    def validate_params(cls, v, values):
-        architecture = values.get('architecture')
+    @field_validator('params')
+    @classmethod
+    def validate_params(cls, v, info):
+        architecture = info.data.get('architecture')
         if architecture == 'tcn':
             required_params = ["input_size", "output_size", "num_blocks", "num_channels", "kernel_size", "dropout"]
         elif architecture == 'wavenet':
