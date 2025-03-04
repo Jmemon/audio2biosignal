@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional, Literal, Union
+from typing import List, Dict, Optional, Literal, Union, Any
 from src.data.datasets.types import DatasetType
 
 class DatasetConfig(BaseModel):
