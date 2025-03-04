@@ -54,7 +54,13 @@ def main():
     # Create prompt string with experiment description
     prompt = f"""CREATE configs/{experiment_name}.yml ensuring that it satisfies ```{args.description}``` and making intelligent choices for any unspecified fields keeping in mind the overall purpose of this repo: to train model that translate audio as MFCCs to EDA signals."""
     
-    # TODO: Implement the rest of the functionality
+    # Run the coder with the prompt
+    print(f"Generating configuration for experiment: {experiment_name}")
+    print(f"Description: {args.description}")
+    print(f"Using {len(read_only_files)} reference files for context")
+    
+    response = coder.run(prompt)
+    print(f"Configuration generated for {experiment_name}")
 
 def ensure_project_root():
     """
