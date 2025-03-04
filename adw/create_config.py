@@ -43,7 +43,13 @@ def main():
     
     # Create aider Coder instance
     model = get_model_from_name("claude-3-5-sonnet-latest")
-    coder = Coder(model=model)
+    coder = Coder.create(
+        main_model=model,
+        edit_format="diff",
+        read_only_fnames=read_only_files,
+        suggest_shell_commands=False,
+        auto_commits=False
+    )
     
     # Create prompt string with experiment description
     prompt = f"""CREATE configs/{experiment_name}.yml ensuring that it satisfies ```{args.description}``` and making intelligent choices for any unspecified fields keeping in mind the overall purpose of this repo: to train model that translate audio as MFCCs to EDA signals."""
