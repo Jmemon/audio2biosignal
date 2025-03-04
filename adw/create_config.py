@@ -103,7 +103,7 @@ def generate_experiment_name(description: str) -> str:
         # Call Haiku API
         response = client.messages.create(
             model="claude-haiku-v1",
-            max_tokens=30,
+            max_tokens=50,
             temperature=0.7,
             system="You create brief, memorable experiment names.",
             messages=[{"role": "user", "content": prompt}]
