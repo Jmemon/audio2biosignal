@@ -4,6 +4,7 @@ import os
 import sys
 import wandb
 import torch
+from dotenv import load_dotenv
 
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,6 +19,9 @@ from src.utilities import S3FileManager
 from transformers import Trainer, TrainingArguments
 
 def main():
+    # Load environment variables from .env file
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(description="Train Audio2EDA Model")
     parser.add_argument("--config", type=str, required=True, help="Config file path")
     args = parser.parse_args()
