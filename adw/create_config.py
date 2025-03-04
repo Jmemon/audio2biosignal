@@ -3,6 +3,8 @@ import argparse
 import glob
 import random
 import datetime
+import os
+import sys
 from typing import List
 from pathlib import Path
 from aider.coders import Coder
@@ -12,6 +14,9 @@ def main():
     """
     Main function to parse command line arguments for experiment configuration.
     """
+    # Verify we're in the project root directory
+    ensure_project_root()
+    
     parser = argparse.ArgumentParser(
         description="Generate a configuration file for audio-to-EDA experiments"
     )
@@ -45,6 +50,36 @@ def main():
     prompt = ""
     
     # TODO: Implement the rest of the functionality
+
+def ensure_project_root():
+    """
+    Ensure that we're running from the project root directory (audio2biosignal).
+    If we're in a parent directory of the project, change to the project directory.
+    Otherwise, raise an error.
+    """
+    current_dir = Path.cwd()
+    current_dir_name = current_dir.name
+    
+    # Check if we're already in the project root
+    if current_dir_name == "audio2biosignal" and (current_dir / "src").exists() and (current_dir / "configs").exists():
+        return
+    
+    # Check if we're in a parent directory of the project
+    audio2biosignal_dir = None
+    for path in current_dir.glob("**/audio2biosignal"):
+        if path.is_dir() and (path / "src").exists() and (path / "configs").exists():
+            audio2biosignal_dir = path
+            break
+    
+    if audio2biosignal_dir:
+        # Change to the project directory
+        os.chdir(audio2biosignal_dir)
+        print(f"Changed directory to project root: {audio2biosignal_dir}")
+    else:
+        # Not in the project directory or any parent directory
+        print("Error: Not in the audio2biosignal project directory or any parent directory.")
+        print("Please run this script from the project root or a parent directory.")
+        sys.exit(1)
 
 def get_read_only_files() -> List[str]:
     """
