@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, field_validator
 from typing import List, Dict, Optional, Literal, Union, Any
 
 class DatasetType(Enum):
@@ -135,6 +135,36 @@ class HardwareConfig(BaseModel):
     precision: Literal["fp32", "fp16", "bf16"] = "fp16"
     distributed: bool = False
     num_gpus: int = 1
+    
+    @field_validator('precision')
+    @classmethod
+    def validate_precision(cls, v, info):
+        device = info.data.get('device')
+        if device == 'mps' and v != 'fp32':
+            raise ValueError("MPS device only supports fp32 precision")
+        return v
+    
+    @field_validator('distributed')
+    @classmethod
+    def validate_distributed(cls, v, info):
+        device = info.data.get('device')
+        if device == 'mps' and v:
+            raise ValueError("MPS device does not support distributed training")
+        if device == 'cpu' and v:
+            raise ValueError("Distributed training not recommended with CPU device")
+        return v
+    
+    @field_validator('num_gpus')
+    @classmethod
+    def validate_num_gpus(cls, v, info):
+        device = info.data.get('device')
+        if device == 'mps' and v > 1:
+            raise ValueError("MPS device only supports a single GPU")
+        if device == 'cpu' and v > 0:
+            raise ValueError("CPU device should have num_gpus set to 0")
+        if device == 'cuda' and v < 1:
+            raise ValueError("CUDA device should have at least 1 GPU")
+        return v
 
 class TrainConfig(BaseModel):
     experiment_name: str
