@@ -194,7 +194,7 @@ def parse_target_spec(target_spec: str) -> Tuple[Path, str]:
 
 def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
     """
-    Extract the code text for the specified target using the inspect module.
+    Extract the code text for the specified target using Claude.
     
     Args:
         filepath: Path to the file containing the code.
@@ -204,58 +204,65 @@ def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
         The extracted code text, or None if extraction failed.
     """
     try:
-        # Convert file path to module path
-        rel_path = filepath.relative_to(Path.cwd())
-        module_path = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
+        # Read the file content
+        with open(filepath, 'r', encoding='utf-8') as f:
+            file_content = f.read()
         
-        # Import the module
-        spec = importlib.util.spec_from_file_location(module_path, filepath)
-        if not spec or not spec.loader:
-            print(f"Error: Could not load module from {filepath}")
-            return None
-            
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        # Create Anthropic client
+        client = anthropic.Anthropic(
+            api_key=os.environ.get("ANTHROPIC_API_KEY")
+        )
         
-        # Parse the target specification
-        parts = target_spec.split('.')
+        # Create the prompt for Claude
+        prompt = f"""
+        I have a Python file with the following content:
         
-        # Handle function case
-        if len(parts) == 1:
-            if not hasattr(module, parts[0]):
-                print(f"Error: Function {parts[0]} not found in {filepath}")
-                return None
-            target_obj = getattr(module, parts[0])
-            return inspect.getsource(target_obj)
+        ```python
+        {file_content}
+        ```
         
-        # Handle class.method case
-        elif len(parts) == 2:
-            class_name, method_name = parts
-            
-            if not hasattr(module, class_name):
-                print(f"Error: Class {class_name} not found in {filepath}")
-                return None
-                
-            class_obj = getattr(module, class_name)
-            
-            if not hasattr(class_obj, method_name):
-                print(f"Error: Method {method_name} not found in class {class_name}")
-                return None
-                
-            method_obj = getattr(class_obj, method_name)
-            return inspect.getsource(method_obj)
+        Please extract the complete source code for the target: "{target_spec}"
         
-        # Handle class case (if target_spec is just a class name)
-        elif len(parts) == 1 and inspect.isclass(getattr(module, parts[0], None)):
-            class_obj = getattr(module, parts[0])
-            return inspect.getsource(class_obj)
-            
+        The target could be:
+        1. A function (e.g., "function_name")
+        2. A class (e.g., "ClassName")
+        3. A class method (e.g., "ClassName.method_name")
+        
+        Return ONLY the exact source code of the target, including docstrings, comments, and all code within the target's scope.
+        Include any decorators that are applied to the target.
+        For classes, include all methods and attributes.
+        """
+        
+        # Call Claude API
+        message = client.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=4000,
+            temperature=0,
+            system="You are a helpful assistant that extracts code from Python files with perfect accuracy.",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract the code from the response
+        response_text = message.content[0].text
+        
+        # Find code in the response (it might be wrapped in markdown code blocks)
+        if "```python" in response_text:
+            code_text = response_text.split("```python")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            code_text = response_text.split("```")[1].split("```")[0].strip()
         else:
-            print(f"Error: Invalid target specification format: {target_spec}")
+            code_text = response_text.strip()
+        
+        if not code_text:
+            print(f"Error: Could not extract code for '{target_spec}' from {filepath}")
             return None
             
-    except ImportError as e:
-        print(f"Error importing module: {e}")
+        return code_text
+        
+    except FileNotFoundError:
+        print(f"Error: File {filepath} not found")
         return None
     except Exception as e:
         print(f"Error extracting code: {e}")
