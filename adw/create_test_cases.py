@@ -75,7 +75,7 @@ def main():
     prompt = prompt.replace("<OUTPUT_PATH>", output_path)
     
     # Set up the coder with the model and dependents as read-only context
-    coder = aider.coders.Coder(
+    coder = Coder(
         main_model=model,
         fnames=[],
         read_only_fnames=dependents,
