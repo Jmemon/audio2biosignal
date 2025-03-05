@@ -78,6 +78,7 @@ def main():
     prompt = prompt.replace("<TARGET_FILE>", str(filepath))
     prompt = prompt.replace("<TARGET_CODE>", code_txt)
     prompt = prompt.replace("<OUTPUT_PATH>", output_path)
+    prompt = prompt.replace("<TARGET_DEPENDENTS>", ",".join(str(d) for d in dependents))
     
     # Set up the coder with the model and dependents as read-only context
     coder = Coder.create(
