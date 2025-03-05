@@ -5,14 +5,18 @@ USAGE INSTRUCTIONS:
 2. Replace the following tags with actual values:
    - <TARGET_FILE>: Path to the file containing the code to test
    - <TARGET_CODE>: The actual code to generate tests for (full content or reference)
+   - <TARGET_DEPENDENTS>: Comma-separated list of files that use the code being tested
    - <OUTPUT_PATH>: Path where the generated JSON file should be saved
 3. Feed the processed specification to the code generation model
 4. Parse and validate the generated test cases
 -->
 
 ## High-Level Objective
-Generate comprehensive, well-structured test suites for the target software component based on signature, implementation details, and usage examples:
+Generate comprehensive, well-structured test cases for the target software component based on signature, implementation details, and usage examples:
+```python
 <TARGET_CODE>
+```
+DO NOT WRITE ANY TEST CODE, ONLY THE JSON OUTPUT AS OUTLINED IN LOW-LEVEL TASKS.
 
 ## Mid-Level Objectives
 <!-- High-level processing flow -->
@@ -88,7 +92,9 @@ Generate comprehensive, well-structured test suites for the target software comp
 - Structure output for easy translation into executable tests
 
 ## Target Component
+```python
 <TARGET_CODE>
+```
 
 ## Low-Level Tasks
 <!-- These tasks map directly to JSON output fields -->
@@ -137,10 +143,12 @@ Generate comprehensive, well-structured test suites for the target software comp
 5. **Output Formatting**
    - Generate output as a structured JSON file at the path specified by <OUTPUT_PATH>
    - Format the JSON as an array of test case objects with the following schema:
-     ```json
+```aider
+CREATE <OUTPUT_PATH>:
      {
        "metadata": {
          "source_file": "<TARGET_FILE>",
+         "dependents": "<TARGET_DEPENDENTS>",
          "generated_at": "YYYY-MM-DD HH:MM:SS",
          "version": "1.0"
        },
@@ -182,7 +190,7 @@ Generate comprehensive, well-structured test suites for the target software comp
          }
        ]
      }
-     ```
+```
    - Ensure all test cases have unique IDs following the pattern "CategoryNumber.TestNumber"
    - Use descriptive names for all test cases that clearly indicate what is being tested
    - Include all relevant input parameters with their exact values
