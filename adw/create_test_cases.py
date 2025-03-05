@@ -55,7 +55,7 @@ def main():
         sys.exit(1)
     
     # Find dependent files
-    dependents = find_dependent_files(filepath)
+    dependents = find_dependent_files(filepath, target_spec)
     
     # Set up the AI model
     model = aider.models.Model("claude-3-7-sonnet-latest")
@@ -269,22 +269,59 @@ def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
         return None
 
 
-def find_dependent_files(filepath: Path) -> List[Path]:
+def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     """
-    Find files that import or use the specified file.
+    Find files that import or use the specified target.
     
     Args:
-        filepath: Path to the file to find dependents for.
+        filepath: Path to the file containing the target.
+        target_spec: Target specification (class.method or function).
         
     Returns:
         List of paths to dependent files.
     """
-    # This is a placeholder implementation
-    # In a real implementation, you would need to scan the codebase
-    # to find files that import the target file
+    # Get the module name from the filepath
+    rel_path = filepath.relative_to(Path.cwd())
+    module_path = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
     
-    # For now, just return an empty list
-    return []
+    # Get the target name (last part of the target_spec)
+    target_name = target_spec.split('.')[-1]
+    
+    # Find all Python files in the project
+    python_files = list(Path.cwd().glob('**/*.py'))
+    
+    # Exclude the target file itself and test files
+    python_files = [f for f in python_files if f != filepath and not f.name.startswith('test_')]
+    
+    dependent_files = []
+    
+    for file_path in python_files:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+                # Check for imports of the module
+                module_import_patterns = [
+                    f"import {module_path}",
+                    f"from {module_path} import",
+                ]
+                
+                # Check for direct usage of the target
+                target_usage_patterns = [
+                    f"{target_name}(",  # Function call
+                    f"{target_spec}(",  # Method call with class prefix
+                    f" {target_name} ",  # Variable usage
+                    f":{target_name}",  # Type hint
+                ]
+                
+                # If any pattern is found, add the file to dependents
+                if any(pattern in content for pattern in module_import_patterns + target_usage_patterns):
+                    dependent_files.append(file_path)
+        except Exception as e:
+            print(f"Warning: Error scanning {file_path}: {e}")
+            continue
+    
+    return dependent_files
 
 
 def generate_unit_tests(coder: Coder, filepath: Path, target_spec: str, code_txt: str):
