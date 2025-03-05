@@ -43,10 +43,15 @@ def main():
     filepath = Path(extraction_result["target_file"])
     target_spec = extraction_result["target_name"]
     
+    # Verify that the filepath exists
+    if not filepath.exists():
+        print(f"Error: File {filepath} does not exist")
+        sys.exit(1)
+    
     # Extract the code text from the target
     code_txt = extract_code_text(filepath, target_spec)
     if not code_txt:
-        print(f"Error: Could not extract code from {args.target}")
+        print(f"Error: Could not extract code for '{target_spec}' from {filepath}")
         sys.exit(1)
     
     # Find dependent files
