@@ -244,7 +244,7 @@ def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
         # Call Claude API
         message = client.messages.create(
             model="claude-3-5-sonnet-latest",
-            max_tokens=20000,
+            max_tokens=8192,
             temperature=0,
             system="You are a helpful assistant that extracts code from Python files with perfect accuracy.",
             messages=[
