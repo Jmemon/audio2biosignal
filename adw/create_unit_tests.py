@@ -4,6 +4,8 @@ Script to create unit tests for specified code targets using AI assistance.
 """
 
 import argparse
+import inspect
+import importlib
 import os
 import sys
 from pathlib import Path
@@ -118,7 +120,7 @@ def parse_target_spec(target_spec: str) -> Tuple[Path, str]:
 
 def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
     """
-    Extract the code text for the specified target.
+    Extract the code text for the specified target using the inspect module.
     
     Args:
         filepath: Path to the file containing the code.
@@ -128,16 +130,59 @@ def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
         The extracted code text, or None if extraction failed.
     """
     try:
-        with open(filepath, 'r') as f:
-            file_content = f.read()
-            
-        # This is a simplified extraction - in a real implementation,
-        # you would need more sophisticated parsing to extract classes and methods
-        # Consider using the ast module for proper Python code parsing
+        # Convert file path to module path
+        rel_path = filepath.relative_to(Path.cwd())
+        module_path = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
         
-        # For now, just return the whole file content
-        # In a real implementation, you would extract just the relevant code
-        return file_content
+        # Import the module
+        spec = importlib.util.spec_from_file_location(module_path, filepath)
+        if not spec or not spec.loader:
+            print(f"Error: Could not load module from {filepath}")
+            return None
+            
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Parse the target specification
+        parts = target_spec.split('.')
+        
+        # Handle function case
+        if len(parts) == 1:
+            if not hasattr(module, parts[0]):
+                print(f"Error: Function {parts[0]} not found in {filepath}")
+                return None
+            target_obj = getattr(module, parts[0])
+            return inspect.getsource(target_obj)
+        
+        # Handle class.method case
+        elif len(parts) == 2:
+            class_name, method_name = parts
+            
+            if not hasattr(module, class_name):
+                print(f"Error: Class {class_name} not found in {filepath}")
+                return None
+                
+            class_obj = getattr(module, class_name)
+            
+            if not hasattr(class_obj, method_name):
+                print(f"Error: Method {method_name} not found in class {class_name}")
+                return None
+                
+            method_obj = getattr(class_obj, method_name)
+            return inspect.getsource(method_obj)
+        
+        # Handle class case (if target_spec is just a class name)
+        elif len(parts) == 1 and inspect.isclass(getattr(module, parts[0], None)):
+            class_obj = getattr(module, parts[0])
+            return inspect.getsource(class_obj)
+            
+        else:
+            print(f"Error: Invalid target specification format: {target_spec}")
+            return None
+            
+    except ImportError as e:
+        print(f"Error importing module: {e}")
+        return None
     except Exception as e:
         print(f"Error extracting code: {e}")
         return None
