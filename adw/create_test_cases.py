@@ -395,15 +395,17 @@ def create_test_filepath(filepath: Path) -> Path:
     Returns:
         Path to the test file.
     """
-    # Convert src/module/file.py to tests/module/test_file.py
+    # Convert src/module/file.py to tests/unit/module/test_file.py
     parts = list(filepath.parts)
     
     if "src" in parts:
         src_index = parts.index("src")
         parts[src_index] = "tests"
+        # Insert "unit" after "tests"
+        parts.insert(src_index + 1, "unit")
     else:
-        # If not in src, just prepend tests/
-        parts = ["tests"] + parts[1:]
+        # If not in src, just prepend tests/unit/
+        parts = ["tests", "unit"] + parts[1:]
     
     # Add test_ prefix to the filename
     filename = parts[-1]
