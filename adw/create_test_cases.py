@@ -18,6 +18,7 @@ try:
     import aider
     from aider.coders import Coder
     from aider.models import Model
+    from aider.io import InputOutput
 except ImportError:
     print("Error: aider package not found. Please install it with 'pip install aider'")
     sys.exit(1)
@@ -80,7 +81,8 @@ def main():
         fnames=[filepath],
         read_only_fnames=dependents,
         suggest_shell_commands=False,
-        auto_commits=False
+        auto_commits=False,
+        io=InputOutput(yes=True)
     )
     
     # Generate the unit tests
