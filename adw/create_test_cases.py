@@ -77,10 +77,10 @@ def main():
     # Set up the coder with the model and dependents as read-only context
     coder = Coder(
         main_model=model,
-        fnames=[],
+        fnames=[filepath],
         read_only_fnames=dependents,
         suggest_shell_commands=False,
-        autocommit=False
+        auto_commits=False
     )
     
     # Generate the unit tests
@@ -378,7 +378,7 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
     print(f"Test file will be created at: {test_filepath}")
     
     # Generate test cases using the AI model
-    response = coder.main_model.complete(prompt)
+    response = coder.run(prompt)
     
     # Extract JSON from the response
     try:
@@ -399,9 +399,6 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
             json.dump(test_cases, f, indent=2)
             
         print(f"Test cases saved to {output_path}")
-        
-        # TODO: Convert the test cases to actual pytest code
-        # This would involve generating a pytest file from the test cases
         
     except Exception as e:
         print(f"Error processing AI response: {e}")
