@@ -40,8 +40,11 @@ def main():
     
     # Extract target and filepath from description using Claude
     extraction_result = extract_target_from_description(args.description)
-    filepath = Path(extraction_result["target_file"])
+    filepath_str = extraction_result["target_file"]
     target_spec = extraction_result["target_name"]
+    
+    # Normalize the filepath (handle both relative and absolute paths)
+    filepath = normalize_filepath(filepath_str)
     
     # Verify that the filepath exists
     if not filepath.exists():
@@ -93,6 +96,28 @@ def verify_project_root() -> bool:
     """
     cwd = Path.cwd().name
     return cwd == "audio2biosignal"
+
+
+def normalize_filepath(filepath_str: str) -> Path:
+    """
+    Normalize a filepath string to an absolute Path.
+    
+    Args:
+        filepath_str: A string representing a file path, which can be:
+                     - An absolute path
+                     - A path relative to the project root (audio2biosignal)
+    
+    Returns:
+        Path: An absolute Path object
+    """
+    filepath = Path(filepath_str)
+    
+    # If it's already an absolute path, return it
+    if filepath.is_absolute():
+        return filepath
+    
+    # Otherwise, treat it as relative to the project root
+    return Path.cwd() / filepath
 
 
 def parse_arguments() -> argparse.Namespace:
