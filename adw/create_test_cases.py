@@ -76,13 +76,12 @@ def main():
     prompt = prompt.replace("<OUTPUT_PATH>", output_path)
     
     # Set up the coder with the model and dependents as read-only context
-    coder = Coder(
+    coder = Coder.create(
         main_model=model,
         fnames=[filepath],
         read_only_fnames=dependents,
         suggest_shell_commands=False,
-        auto_commits=False,
-        io=InputOutput(yes=True)
+        auto_commits=False
     )
     
     # Generate the unit tests
