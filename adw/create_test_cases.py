@@ -10,7 +10,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 import anthropic
 
@@ -91,7 +91,15 @@ def main():
     )
     
     # Generate the unit tests
-    generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
+    test_cases = generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
+    
+    # Save the test cases to a file if generation was successful
+    if test_cases:
+        # Save the test cases to a file
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(test_cases, f, indent=2)
+            
+        print(f"Test cases saved to {output_path}")
 
 
 def verify_project_root() -> bool:
@@ -398,7 +406,7 @@ def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     return dependent_files
 
 
-def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt: str, prompt: str):
+def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt: str, prompt: str) -> Optional[Dict]:
     """
     Generate unit tests for the specified code target.
     
@@ -408,6 +416,9 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
         target_spec: Target specification (class.method or function).
         code_txt: The code text to generate tests for.
         prompt: The prompt to send to the AI model.
+        
+    Returns:
+        Optional[Dict]: The parsed test cases as a dictionary, or None if parsing failed.
     """
     # Use the coder to generate the tests
     print(f"Generating test cases for {target_spec} in {filepath}")
@@ -427,19 +438,14 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
             
         # Parse the JSON
         test_cases = json.loads(json_text)
-        
-        # Save the test cases to a file
-        output_path = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(test_cases, f, indent=2)
-            
-        print(f"Test cases saved to {output_path}")
+        return test_cases
         
     except Exception as e:
         print(f"Error processing AI response: {e}")
         print("Saving raw response for debugging")
         with open(f"{target_spec.lower().replace('.', '_')}_raw_response.txt", 'w', encoding='utf-8') as f:
             f.write(response)
+        return None
 
 
 
