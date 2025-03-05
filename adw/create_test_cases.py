@@ -309,6 +309,38 @@ def extract_code_text(filepath: Path, target_spec: str) -> Optional[str]:
         return None
 
 
+def create_test_file(filepath: Path) -> Path:
+    """
+    Create an empty test file in tests/unit directory that mirrors the structure of the source file.
+    
+    Args:
+        filepath: Path to the source file.
+        
+    Returns:
+        Path: Path to the created test file.
+    """
+    # Get the relative path from the src directory
+    try:
+        rel_path = filepath.relative_to(Path.cwd() / 'src')
+    except ValueError:
+        # If the file is not in src, use the filename only
+        rel_path = Path(filepath.name)
+    
+    # Create the test file path in tests/unit
+    test_dir = Path.cwd() / 'tests' / 'unit' / rel_path.parent
+    test_file = test_dir / f"test_{filepath.name}"
+    
+    # Create the directory if it doesn't exist
+    test_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create the test file if it doesn't exist
+    if not test_file.exists():
+        with open(test_file, 'w', encoding='utf-8') as f:
+            pass  # Create an empty file
+    
+    return test_file
+
+
 def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     """
     Find files that import or use the specified target.
