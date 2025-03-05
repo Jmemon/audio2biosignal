@@ -62,7 +62,11 @@ def main():
     dependents = find_dependent_files(filepath, target_spec)
     
     # Set up the AI model
-    model = aider.models.Model("claude-3-7-sonnet-latest")
+    model = Model("claude-3-7-sonnet-latest")
+    print(f"\nInitialized model: {model}")
+    print(f"\nTarget file: {filepath}")
+    print(f"Target specification: {target_spec}")
+    print(f"\nExtracted code:\n{code_txt}\n")
     
     # Load the prompt template from the specification file
     spec_path = Path("specs/test_writing/generate-test-cases.md")
