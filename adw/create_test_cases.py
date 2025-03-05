@@ -73,11 +73,17 @@ def main():
     with open(spec_path, 'r', encoding='utf-8') as f:
         prompt = f.read()
     
+    # Create the test file
+    test_file_path = create_test_file(filepath)
+    
+    # Set the output path to be in the same directory as the test file
+    output_filename = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
+    output_path = test_file_path.parent / output_filename
+    
     # Replace placeholders in the prompt
-    output_path = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
     prompt = prompt.replace("<TARGET_FILE>", str(filepath))
     prompt = prompt.replace("<TARGET_CODE>", code_txt)
-    prompt = prompt.replace("<OUTPUT_PATH>", output_path)
+    prompt = prompt.replace("<OUTPUT_PATH>", str(output_path))
     prompt = prompt.replace("<TARGET_DEPENDENTS>", ",".join(str(d) for d in dependents))
     
     # Set up the coder with the model and dependents as read-only context
@@ -95,11 +101,15 @@ def main():
     
     # Save the test cases to a file if generation was successful
     if test_cases:
+        # Create parent directory if it doesn't exist
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
         # Save the test cases to a file
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(test_cases, f, indent=2)
             
         print(f"Test cases saved to {output_path}")
+        print(f"Empty test file created at {test_file_path}")
 
 
 def verify_project_root() -> bool:
@@ -427,6 +437,7 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
     response = coder.run(prompt)
     
     # Extract JSON from the response
+    test_cases = None
     try:
         # Look for JSON content in the response
         if "```json" in response:
@@ -438,14 +449,14 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
             
         # Parse the JSON
         test_cases = json.loads(json_text)
-        return test_cases
         
     except Exception as e:
         print(f"Error processing AI response: {e}")
         print("Saving raw response for debugging")
         with open(f"{target_spec.lower().replace('.', '_')}_raw_response.txt", 'w', encoding='utf-8') as f:
             f.write(response)
-        return None
+    
+    return test_cases
 
 
 
