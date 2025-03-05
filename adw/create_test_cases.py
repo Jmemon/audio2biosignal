@@ -85,7 +85,8 @@ def main():
         fnames=[],
         read_only_fnames=dependents + [filepath],
         suggest_shell_commands=False,
-        auto_commits=False
+        auto_commits=False,
+        io=InputOutput(yes=True)
     )
     
     # Generate the unit tests
@@ -375,12 +376,8 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
         code_txt: The code text to generate tests for.
         prompt: The prompt to send to the AI model.
     """
-    # Create the test file path
-    test_filepath = create_test_filepath(filepath)
-    
     # Use the coder to generate the tests
     print(f"Generating test cases for {target_spec} in {filepath}")
-    print(f"Test file will be created at: {test_filepath}")
     
     # Generate test cases using the AI model
     response = coder.run(prompt)
@@ -412,33 +409,6 @@ def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt
             f.write(response)
 
 
-def create_test_filepath(filepath: Path) -> Path:
-    """
-    Create the path for the test file based on the source file path.
-    
-    Args:
-        filepath: Path to the source file.
-        
-    Returns:
-        Path to the test file.
-    """
-    # Convert src/module/file.py to tests/unit/module/test_file.py
-    parts = list(filepath.parts)
-    
-    if "src" in parts:
-        src_index = parts.index("src")
-        parts[src_index] = "tests"
-        # Insert "unit" after "tests"
-        parts.insert(src_index + 1, "unit")
-    else:
-        # If not in src, just prepend tests/unit/
-        parts = ["tests", "unit"] + parts[1:]
-    
-    # Add test_ prefix to the filename
-    filename = parts[-1]
-    parts[-1] = f"test_{filename}"
-    
-    return Path(*parts)
 
 
 if __name__ == "__main__":
