@@ -6,11 +6,13 @@ Script to create unit tests for specified code targets using AI assistance.
 import argparse
 import inspect
 import importlib
+import json
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from dotenv import load_dotenv
+import anthropic
 
 try:
     import aider
@@ -36,8 +38,10 @@ def main():
     # Parse command line arguments
     args = parse_arguments()
     
-    # Parse the target specification
-    filepath, target_spec = parse_target_spec(args.target)
+    # Extract target and filepath from description using Claude
+    extraction_result = extract_target_from_description(args.description)
+    filepath = Path(extraction_result["target_file"])
+    target_spec = extraction_result["target_name"]
     
     # Extract the code text from the target
     code_txt = extract_code_text(filepath, target_spec)
@@ -92,6 +96,71 @@ def parse_arguments() -> argparse.Namespace:
         help="Description of what class/method/function to test and the filepath it's located in"
     )
     return parser.parse_args()
+
+
+def extract_target_from_description(description: str) -> Dict[str, str]:
+    """
+    Use Claude to extract the target function/class/method and file from the description.
+    
+    Args:
+        description: User's description of what to test
+        
+    Returns:
+        Dictionary with keys 'target_name' and 'target_file'
+    """
+    client = anthropic.Anthropic(
+        api_key=os.environ.get("ANTHROPIC_API_KEY")
+    )
+    
+    prompt = f"""
+    Extract the target function/class/method name and the file path from this description:
+    
+    "{description}"
+    
+    Return only a JSON object with these keys:
+    - target_name: The name of the function, class, or method (e.g., "ClassName.method_name" or "function_name")
+    - target_file: The file path where the code is located (e.g., "src/module/file.py")
+    
+    If you can't determine one of these values, use null for that field.
+    """
+    
+    message = client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=1000,
+        temperature=0,
+        system="You are a helpful assistant that extracts structured information from text.",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
+    # Extract the JSON from the response
+    try:
+        response_text = message.content[0].text
+        # Find JSON in the response (it might be wrapped in markdown code blocks)
+        if "```json" in response_text:
+            json_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            json_text = response_text.split("```")[1].split("```")[0].strip()
+        else:
+            json_text = response_text.strip()
+            
+        result = json.loads(json_text)
+        
+        # Validate the result
+        if "target_name" not in result or "target_file" not in result:
+            print("Error: Claude's response is missing required fields")
+            sys.exit(1)
+            
+        return result
+    except Exception as e:
+        print(f"Error parsing Claude's response: {e}")
+        print("Using fallback parsing method...")
+        # Implement a simple fallback method
+        return {
+            "target_name": input("Please enter the target name (e.g., ClassName.method_name): "),
+            "target_file": input("Please enter the file path (e.g., src/module/file.py): ")
+        }
 
 
 def parse_target_spec(target_spec: str) -> Tuple[Path, str]:
