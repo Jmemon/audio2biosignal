@@ -87,9 +87,9 @@ def parse_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Create unit tests for specified code targets")
     parser.add_argument(
-        "--target", 
-        required=True,
-        help="Target code specification in format <filepath>:class.method or <filepath>:function"
+        "description",
+        type=str,
+        help="Description of what class/method/function to test and the filepath it's located in"
     )
     return parser.parse_args()
 
