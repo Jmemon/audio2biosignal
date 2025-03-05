@@ -81,7 +81,7 @@ def main():
     )
     
     # Generate the unit tests
-    generate_unit_tests(coder, filepath, target_spec, code_txt, prompt)
+    generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
 
 
 def verify_project_root() -> bool:
@@ -334,7 +334,7 @@ def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     return dependent_files
 
 
-def generate_unit_tests(coder: Coder, filepath: Path, target_spec: str, code_txt: str, prompt: str):
+def generate_test_cases(coder: Coder, filepath: Path, target_spec: str, code_txt: str, prompt: str):
     """
     Generate unit tests for the specified code target.
     
