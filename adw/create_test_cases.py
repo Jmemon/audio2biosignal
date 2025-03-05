@@ -60,8 +60,16 @@ def main():
     # Set up the AI model
     model = aider.models.Model("claude-3-7-sonnet-latest")
     
-    # Create an empty prompt
-    prompt = ""
+    # Load the prompt template from the specification file
+    spec_path = Path("specs/test_writing/generate-test-cases.md")
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        prompt = f.read()
+    
+    # Replace placeholders in the prompt
+    output_path = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
+    prompt = prompt.replace("<TARGET_FILE>", str(filepath))
+    prompt = prompt.replace("<TARGET_CODE>", code_txt)
+    prompt = prompt.replace("<OUTPUT_PATH>", output_path)
     
     # Set up the coder with the model and dependents as read-only context
     coder = aider.coders.Coder(
@@ -73,7 +81,7 @@ def main():
     )
     
     # Generate the unit tests
-    generate_unit_tests(coder, filepath, target_spec, code_txt)
+    generate_unit_tests(coder, filepath, target_spec, code_txt, prompt)
 
 
 def verify_project_root() -> bool:
@@ -326,7 +334,7 @@ def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     return dependent_files
 
 
-def generate_unit_tests(coder: Coder, filepath: Path, target_spec: str, code_txt: str):
+def generate_unit_tests(coder: Coder, filepath: Path, target_spec: str, code_txt: str, prompt: str):
     """
     Generate unit tests for the specified code target.
     
@@ -335,30 +343,46 @@ def generate_unit_tests(coder: Coder, filepath: Path, target_spec: str, code_txt
         filepath: Path to the file containing the code.
         target_spec: Target specification (class.method or function).
         code_txt: The code text to generate tests for.
+        prompt: The prompt to send to the AI model.
     """
     # Create the test file path
     test_filepath = create_test_filepath(filepath)
     
-    # Create the prompt for the AI
-    prompt = f"""
-    Please create unit tests for the following code:
+    # Use the coder to generate the tests
+    print(f"Generating test cases for {target_spec} in {filepath}")
+    print(f"Test file will be created at: {test_filepath}")
     
-    File: {filepath}
-    Target: {target_spec}
+    # Generate test cases using the AI model
+    response = coder.main_model.complete(prompt)
     
-    Code:
-    ```python
-    {code_txt}
-    ```
-    
-    The tests should be comprehensive and cover all edge cases.
-    Please use pytest for the tests.
-    """
-    
-    # TODO: Use the coder to generate the tests
-    # This would involve interacting with the AI model
-    print(f"Would generate tests for {target_spec} in {filepath}")
-    print(f"Test file would be created at: {test_filepath}")
+    # Extract JSON from the response
+    try:
+        # Look for JSON content in the response
+        if "```json" in response:
+            json_text = response.split("```json")[1].split("```")[0].strip()
+        elif "```" in response:
+            json_text = response.split("```")[1].split("```")[0].strip()
+        else:
+            json_text = response.strip()
+            
+        # Parse the JSON
+        test_cases = json.loads(json_text)
+        
+        # Save the test cases to a file
+        output_path = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(test_cases, f, indent=2)
+            
+        print(f"Test cases saved to {output_path}")
+        
+        # TODO: Convert the test cases to actual pytest code
+        # This would involve generating a pytest file from the test cases
+        
+    except Exception as e:
+        print(f"Error processing AI response: {e}")
+        print("Saving raw response for debugging")
+        with open(f"{target_spec.lower().replace('.', '_')}_raw_response.txt", 'w', encoding='utf-8') as f:
+            f.write(response)
 
 
 def create_test_filepath(filepath: Path) -> Path:
