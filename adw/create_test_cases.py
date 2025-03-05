@@ -287,11 +287,13 @@ def find_dependent_files(filepath: Path, target_spec: str) -> List[Path]:
     # Get the target name (last part of the target_spec)
     target_name = target_spec.split('.')[-1]
     
-    # Find all Python files in the project
-    python_files = list(Path.cwd().glob('**/*.py'))
+    # Find all Python files in src and scripts directories
+    src_files = list(Path.cwd().joinpath('src').glob('**/*.py'))
+    script_files = list(Path.cwd().joinpath('scripts').glob('**/*.py'))
+    python_files = src_files + script_files
     
-    # Exclude the target file itself and test files
-    python_files = [f for f in python_files if f != filepath and not f.name.startswith('test_')]
+    # Exclude the target file itself
+    python_files = [f for f in python_files if f != filepath]
     
     dependent_files = []
     
