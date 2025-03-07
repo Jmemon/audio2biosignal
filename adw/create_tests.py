@@ -69,22 +69,36 @@ def main():
     print(f"\nExtracted code:\n{code_txt}\n")
     
     # Load the prompt template from the specification file
-    spec_path = Path("specs/test_writing/generate-test-cases.md")
+    spec_path = Path("specs/test_writing/generate-tests.md")
     with open(spec_path, 'r', encoding='utf-8') as f:
         prompt = f.read()
     
     # Create the test file
     test_file_path = create_test_file(filepath)
     
+    # Read the existing test file content
+    test_code_txt = ""
+    if test_file_path.exists() and test_file_path.stat().st_size > 0:
+        with open(test_file_path, 'r', encoding='utf-8') as f:
+            test_code_txt = f.read()
+    
     # Set the output path to be in the same directory as the test file
     output_filename = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
     output_path = test_file_path.parent / output_filename
     
+    # Helper function to read dependent files
+    def read(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            print(f"Warning: Could not read {file_path}: {e}")
+            return ""
+    
     # Replace placeholders in the prompt
-    prompt = prompt.replace("<TARGET_FILE>", str(filepath))
     prompt = prompt.replace("<TARGET_CODE>", code_txt)
-    prompt = prompt.replace("<OUTPUT_PATH>", str(output_path))
-    prompt = prompt.replace("<TARGET_DEPENDENTS>", ",".join(str(d) for d in dependents))
+    prompt = prompt.replace("<DEPENDENT_CODE>", ",".join(str(read(d)) for d in dependents))
+    prompt = prompt.replace("<EXISTING_TESTS>", test_code_txt)
     
     # Set up the coder with the model and dependents as read-only context
     coder = Coder.create(
@@ -109,7 +123,7 @@ def main():
             json.dump(test_cases, f, indent=2)
             
         print(f"Test cases saved to {output_path}")
-        print(f"Empty test file created at {test_file_path}")
+        print(f"Test file updated at {test_file_path}")
 
 
 def verify_project_root() -> bool:
