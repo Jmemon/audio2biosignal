@@ -100,6 +100,9 @@ def main():
     prompt = prompt.replace("<DEPENDENT_CODE>", ",".join(str(read(d)) for d in dependents))
     prompt = prompt.replace("<EXISTING_TESTS>", test_code_txt)
     
+    # Store the base prompt for iterations
+    base_prompt = prompt
+    
     # Set up the coder with the model and dependents as read-only context
     coder = Coder.create(
         main_model=model,
@@ -110,8 +113,20 @@ def main():
         io=InputOutput(yes=True)
     )
     
-    # Generate the unit tests
-    generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
+    # Generate the unit tests with multiple iterations
+    for iteration in range(3):
+        print(f"\nIteration {iteration + 1}/3 for generating test cases...")
+        
+        # Generate the unit tests
+        generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
+        
+        # Read the updated test file content for the next iteration
+        if test_file_path.exists() and test_file_path.stat().st_size > 0:
+            with open(test_file_path, 'r', encoding='utf-8') as f:
+                current_test_code = f.read()
+                
+            # Update the prompt for the next iteration
+            prompt = current_test_code + "\n\nCAN YOU THINK OF ANY MORE TESTS NEEDED?\n\n" + base_prompt
 
 
 def verify_project_root() -> bool:
