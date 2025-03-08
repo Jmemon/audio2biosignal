@@ -82,10 +82,6 @@ def main():
         with open(test_file_path, 'r', encoding='utf-8') as f:
             test_code_txt = f.read()
     
-    # Set the output path to be in the same directory as the test file
-    output_filename = f"{target_spec.lower().replace('.', '_')}_test_cases.json"
-    output_path = test_file_path.parent / output_filename
-    
     # Helper function to read dependent files
     def read(file_path):
         try:
