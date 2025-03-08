@@ -15,11 +15,8 @@ Generate industrial-strength, production-hardened test suites that expose defect
 <EXISTING_TESTS>
 ```
 
-## CONTEXT INFORMATION (OPTIONAL)
-- Framework: [Django/Flask/FastAPI/etc]
-- Python version: [e.g., 3.9+]
-- Critical operational constraints: [e.g., thread safety, performance requirements]
-- Test runner: [e.g., pytest, unittest]
+## TEST DIRECTORY STRUCTURE
+The unit tests should be placed in the `tests/unit` directory, mirroring the structure of the `src` directory.
 
 ## OUTPUT: INDUSTRIAL-GRADE TEST SUITE
 
