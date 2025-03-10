@@ -95,6 +95,7 @@ def main():
     prompt = prompt.replace("<TARGET_CODE>", code_txt)
     prompt = prompt.replace("<DEPENDENT_CODE>", ",".join(str(read(d)) for d in dependents))
     prompt = prompt.replace("<EXISTING_TESTS>", test_code_txt)
+    prompt = prompt.replace("<TEST_FILE_PATH>", str(test_file_path))
     
     # Store the base prompt for iterations
     base_prompt = prompt
@@ -122,7 +123,7 @@ def main():
                 current_test_code = f.read()
                 
             # Update the prompt for the next iteration
-            prompt = current_test_code + "\n\nCAN YOU THINK OF ANY MORE TESTS NEEDED?\n\n" + base_prompt
+            prompt = current_test_code + "\n\nGIVEN WE ARE WRITING TESTS ONLY FOR " + target_spec + "\n\nCAN YOU THINK OF ANY MORE TESTS NEEDED?\n\n" + base_prompt
 
 
 def verify_project_root() -> bool:
