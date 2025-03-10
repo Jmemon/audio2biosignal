@@ -111,8 +111,8 @@ def main():
     )
     
     # Generate the unit tests with multiple iterations
-    for iteration in range(3):
-        print(f"\nIteration {iteration + 1}/3 for generating test cases...")
+    for iteration in range(2):
+        print(f"\nIteration {iteration + 1}/2 for generating test cases...")
         
         # Generate the unit tests
         generate_test_cases(coder, filepath, target_spec, code_txt, prompt)
