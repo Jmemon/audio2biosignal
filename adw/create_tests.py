@@ -123,7 +123,7 @@ def main():
                 current_test_code = f.read()
                 
             # Update the prompt for the next iteration
-            prompt = current_test_code + "\n\nGIVEN WE ARE WRITING TESTS ONLY FOR " + target_spec + "\n\nCAN YOU THINK OF ANY MORE TESTS NEEDED?\n\n" + base_prompt
+            prompt = current_test_code + "\n\nGIVEN WE ARE WRITING TESTS ONLY FOR " + target_spec + "\n\nCAN YOU THINK OF ANY MORE TESTS NEEDED? ONLY ADD MORE IF THEY ARE CONSTRUCTIVE ADDITIONS, SIMPLE COMPONENTS MIGHT NOT NEED ANYTHING ELSE\n\n" + base_prompt
 
 
 def verify_project_root() -> bool:
