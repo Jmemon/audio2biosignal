@@ -15,8 +15,62 @@ Generate industrial-strength, production-hardened test suites that expose defect
 <EXISTING_TESTS>
 ```
 
+## RULES
+- Add tests to the test file `<TEST_FILE_PATH>`, do not create a new file.
+- Follow the test directory structure described below.
+- Organize tests into classes reflecting what component you are testing and potentially an overarching category of tasks.
+
 ## TEST DIRECTORY STRUCTURE
-The unit tests should be placed in the `tests/unit` directory, mirroring the structure of the `src` directory.
+
+When implementing pytest tests, the directory structure should be organized in a way that mirrors your source code and makes it easy to locate and manage tests. Here's the standard pytest test directory structure, with a focus on unit tests:
+
+### Basic Unit Test Directory Structure
+
+```
+project_root/
+├── src/                          # Source code directory
+│   ├── package_name/             # Main package
+│   │   ├── __init__.py
+│   │   ├── module1.py
+│   │   ├── module2.py
+│   │   └── subpackage/
+│   │       ├── __init__.py
+│   │       └── module3.py
+├── tests/                        # Test root directory
+│   ├── __init__.py               # Makes tests importable
+│   ├── conftest.py               # Shared fixtures for all tests
+│   ├── unit/                     # Unit tests directory
+│   │   ├── __init__.py
+│   │   ├── conftest.py           # Fixtures specific to unit tests
+│   │   ├── test_module1.py       # Tests for module1.py
+│   │   ├── test_module2.py       # Tests for module2.py
+│   │   └── subpackage/           # Mirror the src structure
+│   │       ├── __init__.py
+│   │       ├── conftest.py       # Subpackage-specific fixtures
+│   │       └── test_module3.py   # Tests for module3.py
+│   ├── integration/              # Integration tests directory
+│   └── functional/               # Functional tests directory
+├── setup.py                      # Project setup file
+└── pytest.ini                    # pytest configuration
+```
+
+### Key Structural Components
+
+1. **Mirror the Source Structure**: The directory structure under `tests/unit/` typically mirrors your source code's structure, making it easy to locate tests for specific components.
+
+2. **Naming Conventions**:
+   - Test files are prefixed with `test_` (e.g., `test_module1.py`)
+   - Test functions and methods are also prefixed with `test_`
+   - Test classes are prefixed with `Test` (e.g., `TestUserAccount`)
+
+3. **Test Isolation by Type**:
+   - `unit/`: Tests for individual components in isolation
+   - `integration/`: Tests for component interactions
+   - `functional/`: End-to-end tests of application features
+
+4. **Fixture Hierarchy**:
+   - Root `conftest.py`: Global fixtures available to all tests
+   - Directory-level `conftest.py`: Fixtures available to tests in that directory and subdirectories
 
 ## OUTPUT: INDUSTRIAL-GRADE TEST SUITE
 
