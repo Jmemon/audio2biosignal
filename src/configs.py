@@ -168,6 +168,16 @@ class HardwareConfig(BaseModel):
         return v
 
 class TrainConfig(BaseModel):
+    batch_size: int = 32
+    max_epochs: int = 100
+    gradient_clip_val: float = 1.0
+    accumulate_grad_batches: int = 1
+    val_check_interval: Union[int, float] = 1.0
+    early_stopping: bool = True
+    early_stopping_patience: int = 10
+    early_stopping_min_delta: float = 0.0001
+
+class RunConfig(BaseModel):
     experiment_name: str
     seed: int = 42
 
@@ -178,12 +188,4 @@ class TrainConfig(BaseModel):
     hardware: HardwareConfig
     logging: LoggingConfig
     checkpoint: CheckpointConfig
-    batch_size: int = 32
-
-    max_epochs: int = 100
-    gradient_clip_val: float = 1.0
-    accumulate_grad_batches: int = 1
-    val_check_interval: Union[int, float] = 1.0
-    early_stopping: bool = True
-    early_stopping_patience: int = 10
-    early_stopping_min_delta: float = 0.0001
+    train: TrainConfig = TrainConfig()
