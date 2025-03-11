@@ -3,6 +3,31 @@ import torch.nn as nn
 
 class TCNBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilation, dropout_rate):
+        """
+        Initialize a TCN block with dilated convolutions and residual connection.
+        
+        Args:
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels
+            kernel_size (int): Size of the convolutional kernel
+            dilation (int): Dilation factor for the convolutions
+            dropout_rate (float): Dropout probability between 0 and 1
+            
+        Raises:
+            ValueError: If any parameters have invalid values
+        """
+        # Validate parameters
+        if in_channels <= 0:
+            raise ValueError("in_channels should be positive")
+        if out_channels <= 0:
+            raise ValueError("out_channels should be positive")
+        if kernel_size <= 0:
+            raise ValueError("kernel_size should be positive")
+        if dilation <= 0:
+            raise ValueError("dilation should be positive")
+        if dropout_rate < 0 or dropout_rate > 1:
+            raise ValueError("dropout_rate should be between 0 and 1")
+            
         super(TCNBlock, self).__init__()
         # Two dilated convolutions with residual connection and dropout
         self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size,

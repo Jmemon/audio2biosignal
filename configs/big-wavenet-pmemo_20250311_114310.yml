@@ -1,0 +1,69 @@
+experiment_name: "BigWaveNet_PMEmo"
+seed: 42
+
+model:
+  architecture: "wavenet"
+  params:
+    num_stacks: 5
+    num_layers_per_stack: 12
+    residual_channels: 128
+    skip_channels: 256
+    kernel_size: 3
+    dilation_base: 2
+    dropout_rate: 0.2
+    input_channels: 40  # MFCC features
+    output_channels: 1  # EDA signal output
+    use_bias: true
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.0002
+  weight_decay: 0.001
+  scheduler: "cosine"
+  warmup_steps: 100
+
+data:
+  train_datasets:
+    - pmemo2019
+  val_datasets:
+    - pmemo2019
+  test_datasets:
+    - pmemo2019
+  num_workers: 4
+  prefetch_size: 2
+
+batch_size: 32
+
+loss:
+  name: "l1"  # L1 loss as specified
+
+hardware:
+  device: "cuda"
+  precision: "fp16"
+  distributed: true
+  num_gpus: 2
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_run_name: "BigWaveNet_PMEmo_Run"
+  wandb_tags: ["big_model", "wavenet", "pmemo2019", "l1_loss"]
+  log_every_n_steps: 25
+  train_metrics:
+    - "loss"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"
+
+checkpoint:
+  save_top_k: 3
+  checkpoint_dir: "checkpoints/big-wavenet-pmemo"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  save_every_n_steps: 500
+
+max_epochs: 150
+gradient_clip_val: 1.0
+early_stopping: true
+early_stopping_patience: 15

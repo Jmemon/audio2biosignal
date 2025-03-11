@@ -103,7 +103,7 @@ def main():
     # Set up the coder with the model and dependents as read-only context
     coder = Coder.create(
         main_model=model,
-        fnames=[],
+        fnames=[test_file_path],
         read_only_fnames=dependents + [filepath],
         suggest_shell_commands=False,
         auto_commits=False,
