@@ -107,12 +107,4 @@ class PMEmo2019Dataset(Dataset):
         (subject_id, music_id), (audio_s3_path, eda_s3_path) = list(example.items())[0]
         audio_tensor = self._load_audio_file(audio_s3_path)
         eda_tensor = self._load_eda_file(eda_s3_path, subject_id)
-        # Prefetch next examples
-        if index + 1 < len(self.examples):
-            next_examples = self.examples[index+1:index+5]
-            s3_paths = []
-            for ex in next_examples:
-                _, (next_audio_s3_path, next_eda_s3_path) = list(ex.items())[0]
-                s3_paths.extend([next_audio_s3_path, next_eda_s3_path])
-            self.s3_manager.prefetch_files(s3_paths)
         return audio_tensor, eda_tensor
