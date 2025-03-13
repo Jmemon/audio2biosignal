@@ -43,9 +43,40 @@ class PMEmo2019Dataset(Dataset):
             self._audio_files[music_id] = audio_s3_path
 
         # Load EDA files
-        # List all EDA files in the S3 bucket
-        # Assuming implementation using boto3
-        # For illustration, let's assume self._eda_files is populated
+        # Get list of EDA files from S3
+        eda_base_path = "s3://audio2biosignal-train-data/PMEmo2019/EDA"
+        s3_client = self.s3_manager._get_s3_client()
+        bucket, prefix = self.s3_manager._parse_s3_path(eda_base_path)
+        
+        # List objects in the EDA directory
+        response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        
+        # Process each EDA file
+        for obj in response.get('Contents', []):
+            file_key = obj['Key']
+            file_name = file_key.split('/')[-1]
+            
+            # Extract music_id from filename (assuming format: <music_id>_EDA.csv)
+            if not file_name.endswith('_EDA.csv'):
+                continue
+                
+            music_id = file_name.split('_')[0]
+            eda_s3_path = f"s3://{bucket}/{file_key}"
+            
+            # Download the file to get subject IDs (column headers)
+            local_eda_path = self.s3_manager.download_file(eda_s3_path)
+            
+            # Read the first row to get subject IDs
+            with open(local_eda_path, 'r') as f:
+                reader = csv.reader(f)
+                header = next(reader)
+            
+            # First column is time, rest are subject IDs
+            subject_ids = header[1:]
+            
+            # Map each (subject_id, music_id) pair to this EDA file
+            for subject_id in subject_ids:
+                self._eda_files[(subject_id, music_id)] = eda_s3_path
 
         # Create examples
         for (music_id, subject_id), eda_s3_path in self._eda_files.items():
