@@ -19,8 +19,13 @@ optimizer:
   name: "adamw"
   learning_rate: 0.0002
   weight_decay: 0.001
-  scheduler: "cosine"
+  beta1: 0.9
+  beta2: 0.999
+  momentum: 0.0
   warmup_steps: 100
+  warmup_ratio: 0.0
+  scheduler: "cosine"
+  gradient_clip_val: 1.0
 
 data:
   train_datasets:
@@ -29,10 +34,9 @@ data:
     - pmemo2019
   test_datasets:
     - pmemo2019
+  batch_size: 32
   num_workers: 4
   prefetch_size: 2
-
-batch_size: 32
 
 loss:
   name: "l1"  # L1 loss as specified
@@ -45,15 +49,22 @@ hardware:
 
 logging:
   wandb_project: "audio2eda"
+  wandb_entity: null
   wandb_run_name: "BigWaveNet_PMEmo_Run"
   wandb_tags: ["big_model", "wavenet", "pmemo2019", "l1_loss"]
   log_every_n_steps: 25
+  log_config: true
+  compute_metrics: true
   train_metrics:
     - "loss"
   val_metrics:
     - "loss"
     - "mse"
     - "dtw"
+  val_check_interval: 1.0
+  early_stopping: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.0001
 
 checkpoint:
   save_top_k: 3
@@ -62,8 +73,8 @@ checkpoint:
   mode: "min"
   save_last: true
   save_every_n_steps: 500
+  load_from_checkpoint: null
 
-max_epochs: 150
-gradient_clip_val: 1.0
-early_stopping: true
-early_stopping_patience: 15
+train:
+  max_epochs: 150
+  accumulate_grad_batches: 1

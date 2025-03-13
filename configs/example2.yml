@@ -19,7 +19,13 @@ optimizer:
   name: "adam"
   learning_rate: 0.0005
   weight_decay: 0.001
+  beta1: 0.9
+  beta2: 0.999
+  momentum: 0.0
+  warmup_steps: 0
+  warmup_ratio: 0.0
   scheduler: "cosine"
+  gradient_clip_val: 1.0
 
 data:
   train_datasets:
@@ -28,10 +34,9 @@ data:
     - pmemo2019
   test_datasets:
     - pmemo2019
+  batch_size: 64
   num_workers: 8
   prefetch_size: 4
-
-batch_size: 64
 
 loss:
   name: "huber"
@@ -44,14 +49,22 @@ hardware:
 
 logging:
   wandb_project: "audio2eda"
+  wandb_entity: null
   wandb_run_name: "Example2_Run"
+  wandb_tags: []
   log_every_n_steps: 25
+  log_config: true
+  compute_metrics: true
   train_metrics:
     - "loss"
   val_metrics:
     - "loss"
     - "mse"
     - "dtw"
+  val_check_interval: 1.0
+  early_stopping: true
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0001
 
 checkpoint:
   save_top_k: 5
@@ -60,3 +73,8 @@ checkpoint:
   mode: "min"
   save_last: True
   save_every_n_steps: 500
+  load_from_checkpoint: null
+
+train:
+  max_epochs: 100
+  accumulate_grad_batches: 1
