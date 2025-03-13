@@ -40,8 +40,7 @@ def train(cfg: RunConfig) -> Path:
             project=cfg.logging.wandb_project,
             entity=cfg.logging.wandb_entity,
             name=cfg.logging.wandb_run_name or cfg.experiment_name,
-            tags=cfg.logging.wandb_tags,
-            config=cfg.dict()
+            tags=cfg.logging.wandb_tags
         )
         logger.info(f"Initialized W&B project: {cfg.logging.wandb_project}")
     
