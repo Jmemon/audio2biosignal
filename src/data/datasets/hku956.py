@@ -5,6 +5,7 @@ from src.data.audio_preprocessing import preprocess_audio
 from src.data.eda_preprocessing import preprocess_eda
 from src.utilities import S3FileManager
 import csv
+import pandas as pd
 
 def collate_fn(batch):
     audio_tensors, eda_tensors = zip(*batch)
@@ -31,29 +32,30 @@ class HKU956Dataset(Dataset):
         self._eda_files = {}
         self.examples = []
 
-        # Load audio files
-        audio_csv_path = "s3://audio2biosignal-train-data/HKU956/2. original_song_audio.csv"
-        local_audio_csv = self.s3_manager.download_file(audio_csv_path)
-        with open(local_audio_csv, 'r') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                song_id = row['song_id']
-                link = row['link']
-                self._audio_files[song_id] = link
-
-        # Load EDA files
-        # Assuming listing of S3 paths for EDA files
-        # You might need to use boto3 to list files in the S3 bucket
-        eda_root = "s3://audio2biosignal-train-data/HKU956/1. physiological_signals/"
-        # This requires proper implementation to list subjects and files
-        # For illustration, let's assume self._eda_files is populated
+        # Load metadata from custom_metadata.csv which contains all the mappings
+        metadata_csv_path = "s3://audio2biosignal-train-data/HKU956/custom_metadata.csv"
+        local_metadata_csv = self.s3_manager.download_file(metadata_csv_path)
+        metadata_df = pd.read_csv(local_metadata_csv)
+        
+        # Populate audio and EDA file dictionaries
+        for _, row in metadata_df.iterrows():
+            song_id = str(row['song_id'])
+            subject = str(row['subject'])
+            audio_s3_path = row['audio_path']
+            eda_s3_path = row['eda_path']
+            
+            # Store audio path by song_id
+            self._audio_files[song_id] = audio_s3_path
+            
+            # Store EDA path by (subject, song_id) pair
+            self._eda_files[(subject, song_id)] = eda_s3_path
 
         # Create examples
         for (subject, song_id), eda_s3_path in self._eda_files.items():
-            audio_link = self._audio_files.get(song_id)
-            if audio_link:
+            audio_s3_path = self._audio_files.get(song_id)
+            if audio_s3_path:
                 self.examples.append({
-                    (subject, song_id): (audio_link, eda_s3_path)
+                    (subject, song_id): (audio_s3_path, eda_s3_path)
                 })
 
     def _load_audio_file(self, audio_file_link: str) -> torch.Tensor:
