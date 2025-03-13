@@ -113,13 +113,7 @@ class ModelConfig(BaseModel):
             raise ValueError(f"Missing parameters for {architecture} model: {missing}")
         return v
 
-class LoggingConfig(BaseModel):
-    wandb_project: str
-    wandb_entity: Optional[str] = None
-    wandb_run_name: Optional[str] = None
-    wandb_tags: List[str] = []
-    log_every_n_steps: int = 50
-    log_config: bool = True
+class MetricsConfig(BaseModel):
     compute_metrics: bool = True
     train_metrics: List[Literal["loss", "mse", "dtw", "frechet"]] = ["loss"]
     val_metrics: List[Literal["loss", "mse", "dtw", "frechet"]] = ["loss", "mse", "dtw"]
@@ -127,6 +121,13 @@ class LoggingConfig(BaseModel):
     early_stopping: bool = True
     early_stopping_patience: int = 10
     early_stopping_min_delta: float = 0.0001
+
+class LoggingConfig(BaseModel):
+    wandb_project: str
+    wandb_entity: Optional[str] = None
+    wandb_run_name: Optional[str] = None
+    wandb_tags: List[str] = []
+    log_every_n_steps: int = 50
 
 class CheckpointConfig(BaseModel):
     save_top_k: int = 3
