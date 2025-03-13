@@ -96,11 +96,3 @@ CREATE src/train.py:
     CREATE def train(cfg: TrainState) -> TrainState:
 ```
 
-## Scratch
-- def fit() function runs the train loop. Flow:
-    (model, dataloaders, optimizers, losses) 
-     -> ensure everything is initialized
-     -> Move everything to the accelerator
-     -> connect to wandb
-     -> run train loop for cfg.num_epochs, optimizer stepping, logging metrics to wandb, storing checkpoints, performing validation
-     -> Return TrainOutput with metrics, paths_to_artifacts (checkpoints), path to best checkpoint filled in
