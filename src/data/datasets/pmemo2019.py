@@ -1,4 +1,5 @@
 import torch
+import torchaudio
 from torch.utils.data import Dataset
 from src.configs import PMEmo2019Config, AudioEDAFeatureConfig
 from src.data.audio_preprocessing import preprocess_audio
@@ -59,8 +60,12 @@ class PMEmo2019Dataset(Dataset):
                 })
 
     def _load_audio_file(self, audio_file_s3_path: str) -> torch.Tensor:
+        # Download the audio file from the URL
         local_audio_path = self.s3_manager.download_file(audio_file_s3_path)
-        audio_tensor = preprocess_audio(local_audio_path, self.feature_config)
+        # Load audio with torchaudio
+        waveform, sampling_rate = torchaudio.load(local_audio_path)
+        # Process the audio tensor
+        audio_tensor = preprocess_audio(waveform, sampling_rate, self.feature_config)
         return audio_tensor
 
     def _load_eda_file(self, eda_file_s3_path: str, subject_id: str) -> torch.Tensor:
@@ -68,7 +73,10 @@ class PMEmo2019Dataset(Dataset):
         eda_df = pd.read_csv(local_eda_path)
         time_col = eda_df.columns[0]
         eda_series = eda_df[subject_id]
-        eda_tensor = preprocess_eda(eda_series.values, self.feature_config)
+        # Convert series to tensor before preprocessing
+        eda_signal = torch.tensor(eda_series.values, dtype=torch.float32)
+        # Process the EDA tensor
+        eda_tensor = preprocess_eda(eda_signal, self.feature_config)
         return eda_tensor
 
     def __len__(self) -> int:
