@@ -3,8 +3,7 @@ import torchaudio
 from pathlib import Path
 from src.configs import AudioEDAFeatureConfig
 
-def preprocess_audio(audio_file_path: Path, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
-    waveform, sample_rate = torchaudio.load(audio_file_path)
+def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
     if sample_rate != feature_config.mutual_sample_rate:
         resample_transform = torchaudio.transforms.Resample(
             orig_freq=sample_rate,
