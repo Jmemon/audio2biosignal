@@ -1,4 +1,5 @@
 import torch
+import torchaudio
 from torch.utils.data import Dataset
 from src.configs import HKU956Config, AudioEDAFeatureConfig
 from src.data.audio_preprocessing import preprocess_audio
@@ -61,12 +62,20 @@ class HKU956Dataset(Dataset):
     def _load_audio_file(self, audio_file_link: str) -> torch.Tensor:
         # Download the audio file from the URL
         local_audio_path = self.s3_manager.download_file(audio_file_link)
-        audio_tensor = preprocess_audio(local_audio_path, self.feature_config)
+        # Load audio with torchaudio
+        waveform, sampling_rate = torchaudio.load(local_audio_path)
+        # Process the audio tensor
+        audio_tensor = preprocess_audio(waveform, sampling_rate, self.feature_config)
         return audio_tensor
 
     def _load_eda_file(self, eda_file_path: str) -> torch.Tensor:
         local_eda_path = self.s3_manager.download_file(eda_file_path)
-        eda_tensor = preprocess_eda(local_eda_path, self.feature_config)
+        # Load the CSV file
+        eda_df = pd.read_csv(local_eda_path)
+        # Extract the entirety of the first column as the EDA signal
+        eda_signal = torch.tensor(eda_df.iloc[:, 0].values, dtype=torch.float32)
+        # Process the EDA tensor
+        eda_tensor = preprocess_eda(eda_signal, self.feature_config)
         return eda_tensor
 
     def __len__(self) -> int:
