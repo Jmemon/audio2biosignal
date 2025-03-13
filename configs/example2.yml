@@ -47,13 +47,7 @@ hardware:
   distributed: True
   num_gpus: 2
 
-logging:
-  wandb_project: "audio2eda"
-  wandb_entity: null
-  wandb_run_name: "Example2_Run"
-  wandb_tags: []
-  log_every_n_steps: 25
-  log_config: true
+metrics:
   compute_metrics: true
   train_metrics:
     - "loss"
@@ -65,6 +59,13 @@ logging:
   early_stopping: true
   early_stopping_patience: 10
   early_stopping_min_delta: 0.0001
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_entity: null
+  wandb_run_name: "Example2_Run"
+  wandb_tags: []
+  log_every_n_steps: 25
 
 checkpoint:
   save_top_k: 5
