@@ -70,6 +70,7 @@ class DataConfig(BaseModel):
     train_datasets: List[DatasetType]
     val_datasets: List[DatasetType]
     test_datasets: List[DatasetType]
+    batch_size: int = 32
     num_workers: int = 4
     prefetch_size: int = 2
 
@@ -83,6 +84,7 @@ class OptimizerConfig(BaseModel):
     warmup_steps: int = 0
     warmup_ratio: float = 0.0
     scheduler: Optional[Literal["cosine", "linear", "constant", "reduce_on_plateau"]] = "cosine"
+    gradient_clip_val: float = 1.0
 
 class LossConfig(BaseModel):
     name: Literal["mse", "l1", "huber", "custom"] = "mse"
@@ -121,6 +123,10 @@ class LoggingConfig(BaseModel):
     compute_metrics: bool = True
     train_metrics: List[Literal["loss", "mse", "dtw", "frechet"]] = ["loss"]
     val_metrics: List[Literal["loss", "mse", "dtw", "frechet"]] = ["loss", "mse", "dtw"]
+    val_check_interval: Union[int, float] = 1.0
+    early_stopping: bool = True
+    early_stopping_patience: int = 10
+    early_stopping_min_delta: float = 0.0001
 
 class CheckpointConfig(BaseModel):
     save_top_k: int = 3
@@ -168,14 +174,8 @@ class HardwareConfig(BaseModel):
         return v
 
 class TrainConfig(BaseModel):
-    batch_size: int = 32
     max_epochs: int = 100
-    gradient_clip_val: float = 1.0
     accumulate_grad_batches: int = 1
-    val_check_interval: Union[int, float] = 1.0
-    early_stopping: bool = True
-    early_stopping_patience: int = 10
-    early_stopping_min_delta: float = 0.0001
 
 class RunConfig(BaseModel):
     experiment_name: str
