@@ -9,33 +9,14 @@ from collections import OrderedDict
 import os
 
 class S3FileManager:
-    _instance = None
-    _instance_lock = threading.Lock()
-
-    def __new__(cls, max_cache_size=100):
-        with cls._instance_lock:
-            if cls._instance is None:
-                cls._instance = super(S3FileManager, cls).__new__(cls)
-                cls._instance._initialized = False
-        return cls._instance
-
-    def _init(self, max_cache_size):
-        # Don't store the S3 client as an instance variable
-        # It will be created on demand in each process
+    def __init__(self, max_cache_size=100):
+        # Initialize a new instance with its own cache and resources
         self.cache = OrderedDict()
         self.cache_lock = threading.Lock()
         self.max_cache_size = max_cache_size
         self.temp_dir = Path(tempfile.mkdtemp())
         self.executor = ThreadPoolExecutor(max_workers=5)
         self.in_progress_downloads = {}
-        self._initialized = True
-        # Store the process ID that initialized this instance
-        self._pid = os.getpid()
-
-    def __init__(self, max_cache_size=100):
-        # Check if we're in a new process or if initialization is needed
-        if not hasattr(self, '_initialized') or not self._initialized or self._pid != os.getpid():
-            self._init(max_cache_size)
 
     def _get_s3_client(self):
         """Create a new S3 client on demand"""
@@ -103,7 +84,18 @@ class S3FileManager:
     def clear_cache(self) -> None:
         with self.cache_lock:
             for local_path in self.cache.values():
-                local_path.unlink()
+                try:
+                    local_path.unlink(missing_ok=True)
+                except Exception:
+                    pass  # Ignore errors when removing files
             self.cache.clear()
-        shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
         self.temp_dir = Path(tempfile.mkdtemp())
+        
+    def __del__(self):
+        """Clean up resources when the instance is garbage collected"""
+        try:
+            self.executor.shutdown(wait=False)
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        except Exception:
+            pass  # Ignore errors during cleanup
