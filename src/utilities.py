@@ -4,7 +4,6 @@ import tempfile
 import shutil
 from pathlib import Path
 from typing import Optional, List
-from concurrent.futures import ThreadPoolExecutor
 from collections import OrderedDict
 import os
 
@@ -15,7 +14,6 @@ class S3FileManager:
         self.cache_lock = threading.Lock()
         self.max_cache_size = max_cache_size
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.executor = ThreadPoolExecutor(max_workers=5)
 
     def _get_s3_client(self):
         """Create a new S3 client on demand"""
@@ -74,7 +72,6 @@ class S3FileManager:
     def __del__(self):
         """Clean up resources when the instance is garbage collected"""
         try:
-            self.executor.shutdown(wait=False)
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         except Exception:
             pass  # Ignore errors during cleanup
