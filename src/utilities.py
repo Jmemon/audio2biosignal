@@ -16,7 +16,6 @@ class S3FileManager:
         self.max_cache_size = max_cache_size
         self.temp_dir = Path(tempfile.mkdtemp())
         self.executor = ThreadPoolExecutor(max_workers=5)
-        self.in_progress_downloads = {}
 
     def _get_s3_client(self):
         """Create a new S3 client on demand"""
@@ -39,10 +38,6 @@ class S3FileManager:
                 # Move to end to show that it was recently used
                 self.cache.move_to_end(s3_path)
                 return self.cache[s3_path]
-            elif s3_path in self.in_progress_downloads:
-                # Wait for the in-progress download to finish
-                self.in_progress_downloads[s3_path].result()
-                return self.cache[s3_path]
 
         # Create a client for this download and then discard it
         s3_client = self._get_s3_client()
@@ -57,22 +52,6 @@ class S3FileManager:
                 old_local_path.unlink()
         return local_path
 
-    def prefetch_files(self, s3_paths: List[str]) -> None:
-        for s3_path in s3_paths:
-            with self.cache_lock:
-                if s3_path in self.cache or s3_path in self.in_progress_downloads:
-                    continue
-                future = self.executor.submit(self.download_file, s3_path)
-                self.in_progress_downloads[s3_path] = future
-                future.add_done_callback(self._download_complete(s3_path))
-
-    def _download_complete(self, s3_path):
-        def _callback(future):
-            with self.cache_lock:
-                if future.cancelled():
-                    return
-                self.in_progress_downloads.pop(s3_path, None)
-        return _callback
 
     def get_file(self, s3_path: str) -> Optional[Path]:
         with self.cache_lock:
