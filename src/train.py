@@ -13,6 +13,7 @@ from src.loss import LossBuilder
 from src.data.dataloader import DataLoaderBuilder
 from src.models.tcn import TCN
 from src.models.wavenet import Wavenet
+from src.metrics import MetricsCalculator
 
 def train(cfg: RunConfig) -> Path:
     # (a) Validate critical fields
@@ -138,11 +139,36 @@ def train(cfg: RunConfig) -> Path:
                 epoch_loss += loss.item()
                 global_step += 1
                 
+                # Calculate training metrics if enabled
+                train_metrics_log = {}
+                if cfg.metrics.compute_metrics and len(cfg.metrics.train_metrics) > 0:
+                    # Skip metrics calculation for some steps to save computation
+                    if global_step % cfg.logging.log_every_n_steps == 0:
+                        batch_metrics = MetricsCalculator.calculate_metrics(
+                            outputs.squeeze(), eda, cfg.metrics.train_metrics
+                        )
+                        for metric_name, metric_value in batch_metrics.items():
+                            train_metrics_log[f"train/{metric_name}"] = metric_value
+                
                 # Log metrics
                 if global_step % cfg.logging.log_every_n_steps == 0:
-                    logger.info(f"Epoch {epoch+1}, Batch {batch_idx+1}, Loss: {loss.item():.6f}")
+                    log_message = f"Epoch {epoch+1}, Batch {batch_idx+1}, Loss: {loss.item():.6f}"
+                    
+                    # Add any calculated metrics to the log message
+                    for metric_name, metric_value in train_metrics_log.items():
+                        metric_short_name = metric_name.split('/')[-1]
+                        log_message += f", {metric_short_name}: {metric_value:.6f}"
+                    
+                    logger.info(log_message)
+                    
                     if cfg.logging.wandb_project:
-                        wandb.log({"train/loss": loss.item(), "epoch": epoch, "global_step": global_step})
+                        wandb_log = {
+                            "train/loss": loss.item(),
+                            "epoch": epoch,
+                            "global_step": global_step,
+                            **train_metrics_log
+                        }
+                        wandb.log(wandb_log)
                 
                 # Save checkpoint periodically
                 if cfg.checkpoint.save_every_n_steps > 0 and global_step % cfg.checkpoint.save_every_n_steps == 0:
@@ -185,18 +211,47 @@ def train(cfg: RunConfig) -> Path:
                         batch_loss = criterion(outputs.squeeze(), eda)
                         val_loss += batch_loss.item()
                         
-                        # Calculate additional metrics if needed
-                        # This would be where you'd compute DTW, Frechet, etc.
+                                # Calculate additional metrics
+                                if cfg.metrics.compute_metrics and len(cfg.metrics.val_metrics) > 0:
+                                    batch_metrics = MetricsCalculator.calculate_metrics(
+                                        outputs.squeeze(), eda, cfg.metrics.val_metrics
+                                    )
+                            
+                                    # Accumulate metrics
+                                    for metric_name, metric_value in batch_metrics.items():
+                                        if metric_name not in val_metrics:
+                                            val_metrics[metric_name] = 0.0
+                                        val_metrics[metric_name] += metric_value
             
-            # Calculate average validation loss
-            avg_val_loss = val_loss / sum(len(dl) for dl in val_dataloaders)
-            logger.info(f"Validation Loss: {avg_val_loss:.6f}")
+            # Calculate average validation loss and metrics
+            total_val_batches = sum(len(dl) for dl in val_dataloaders)
+            avg_val_loss = val_loss / total_val_batches
+            
+            # Log validation metrics
+            log_message = f"Validation Loss: {avg_val_loss:.6f}"
+            wandb_log_dict = {"val/loss": avg_val_loss, "epoch": epoch}
+            
+            # Process and log other metrics
+            for metric_name, metric_total in val_metrics.items():
+                metric_avg = metric_total / total_val_batches
+                log_message += f", {metric_name}: {metric_avg:.6f}"
+                wandb_log_dict[f"val/{metric_name}"] = metric_avg
+            
+            logger.info(log_message)
             
             if cfg.logging.wandb_project:
-                wandb.log({"val/loss": avg_val_loss, "epoch": epoch})
+                wandb.log(wandb_log_dict)
             
             # (j) Save checkpoint if it's the best so far
-            current_metric = avg_val_loss  # Using validation loss as the default metric
+            # Determine which metric to monitor based on config
+            monitor_metric = cfg.checkpoint.monitor
+            if monitor_metric == "val_loss":
+                current_metric = avg_val_loss
+            elif monitor_metric in val_metrics:
+                current_metric = val_metrics[monitor_metric] / total_val_batches
+            else:
+                logger.warning(f"Monitored metric '{monitor_metric}' not found, using val_loss instead")
+                current_metric = avg_val_loss
             is_best = False
             
             if cfg.checkpoint.mode == "min" and current_metric < best_metric_value:
