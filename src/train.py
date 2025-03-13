@@ -211,17 +211,17 @@ def train(cfg: RunConfig) -> Path:
                         batch_loss = criterion(outputs.squeeze(), eda)
                         val_loss += batch_loss.item()
                         
-                                # Calculate additional metrics
-                                if cfg.metrics.compute_metrics and len(cfg.metrics.val_metrics) > 0:
-                                    batch_metrics = MetricsCalculator.calculate_metrics(
-                                        outputs.squeeze(), eda, cfg.metrics.val_metrics
-                                    )
+                        # Calculate additional metrics
+                        if cfg.metrics.compute_metrics and len(cfg.metrics.val_metrics) > 0:
+                            batch_metrics = MetricsCalculator.calculate_metrics(
+                                outputs.squeeze(), eda, cfg.metrics.val_metrics
+                            )
                             
-                                    # Accumulate metrics
-                                    for metric_name, metric_value in batch_metrics.items():
-                                        if metric_name not in val_metrics:
-                                            val_metrics[metric_name] = 0.0
-                                        val_metrics[metric_name] += metric_value
+                            # Accumulate metrics
+                            for metric_name, metric_value in batch_metrics.items():
+                                if metric_name not in val_metrics:
+                                    val_metrics[metric_name] = 0.0
+                                val_metrics[metric_name] += metric_value
             
             # Calculate average validation loss and metrics
             total_val_batches = sum(len(dl) for dl in val_dataloaders)
