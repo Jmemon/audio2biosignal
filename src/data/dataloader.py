@@ -1,9 +1,19 @@
 from torch.utils.data import DataLoader
 import torch
+import multiprocessing
 from typing import List
 from src.configs import DataConfig, AudioEDAFeatureConfig, HKU956Config, PMEmo2019Config
 from src.data.datasets.hku956 import HKU956Dataset, collate_fn as hku_collate_fn
 from src.data.datasets.pmemo2019 import PMEmo2019Dataset, collate_fn as pmemo_collate_fn
+
+# Use 'spawn' method for multiprocessing which is more compatible with boto3
+# This is especially important on macOS
+if multiprocessing.get_start_method() != 'spawn':
+    try:
+        multiprocessing.set_start_method('spawn', force=True)
+    except RuntimeError:
+        # If already set and we can't force it, we'll handle this in the DataLoader config
+        pass
 
 class DataLoaderBuilder:
     @staticmethod
@@ -30,12 +40,21 @@ class DataLoaderBuilder:
                 else:
                     selected_indices = indices[split2:]
                 subset = torch.utils.data.Subset(dataset, selected_indices)
+                
+                # Determine if we should use multiprocessing
+                # On macOS, use single process if spawn method couldn't be set
+                use_workers = data_config.num_workers
+                if multiprocessing.get_start_method() != 'spawn' and use_workers > 0:
+                    print(f"Warning: Multiprocessing start method is not 'spawn'. Using single process data loading.")
+                    use_workers = 0
+                
                 dataloader = DataLoader(
                     subset,
                     batch_size=32,  # Adjust as needed
-                    num_workers=data_config.num_workers,
-                    prefetch_factor=data_config.prefetch_size,
-                    collate_fn=collate_fn
+                    num_workers=use_workers,
+                    prefetch_factor=data_config.prefetch_size if use_workers > 0 else 2,
+                    collate_fn=collate_fn,
+                    multiprocessing_context='spawn' if use_workers > 0 else None
                 )
                 dataloaders.append(dataloader)
             return dataloaders

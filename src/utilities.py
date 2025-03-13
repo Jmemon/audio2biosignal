@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor
 from collections import OrderedDict
+import os
 
 class S3FileManager:
     _instance = None
@@ -19,7 +20,8 @@ class S3FileManager:
         return cls._instance
 
     def _init(self, max_cache_size):
-        self.s3_client = boto3.client('s3')
+        # Don't store the S3 client as an instance variable
+        # It will be created on demand in each process
         self.cache = OrderedDict()
         self.cache_lock = threading.Lock()
         self.max_cache_size = max_cache_size
@@ -27,11 +29,18 @@ class S3FileManager:
         self.executor = ThreadPoolExecutor(max_workers=5)
         self.in_progress_downloads = {}
         self._initialized = True
+        # Store the process ID that initialized this instance
+        self._pid = os.getpid()
 
     def __init__(self, max_cache_size=100):
-        if not self._initialized:
+        # Check if we're in a new process or if initialization is needed
+        if not hasattr(self, '_initialized') or not self._initialized or self._pid != os.getpid():
             self._init(max_cache_size)
 
+    def _get_s3_client(self):
+        """Create a new S3 client on demand"""
+        return boto3.client('s3')
+        
     def _parse_s3_path(self, s3_path: str):
         assert s3_path.startswith('s3://'), f"Invalid S3 path: {s3_path}"
         path_parts = s3_path.replace("s3://", "").split("/", 1)
@@ -54,8 +63,10 @@ class S3FileManager:
                 self.in_progress_downloads[s3_path].result()
                 return self.cache[s3_path]
 
+        # Create a client for this download and then discard it
+        s3_client = self._get_s3_client()
         # Download the file
-        self.s3_client.download_file(bucket, key, str(local_path))
+        s3_client.download_file(bucket, key, str(local_path))
 
         with self.cache_lock:
             self.cache[s3_path] = local_path
