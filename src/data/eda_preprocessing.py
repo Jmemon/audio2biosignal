@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import pandas as pd
 from scipy.signal import butter, filtfilt, resample
 from pathlib import Path
@@ -19,6 +20,8 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
         b, a = butter(2, 8, btype='lowpass', fs=feature_config.mutual_sample_rate)
         eda_data = filtfilt(b, a, eda_data)
     if not isinstance(eda_data, torch.Tensor):
+        # Ensure array is contiguous in memory before tensor conversion
+        eda_data = np.ascontiguousarray(eda_data)
         eda_tensor = torch.tensor(eda_data, dtype=torch.float32).unsqueeze(0)  # Shape: (1, time_steps)
     else:
         eda_tensor = eda_data.unsqueeze(0) if eda_data.dim() == 1 else eda_data
