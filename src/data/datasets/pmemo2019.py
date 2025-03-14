@@ -12,14 +12,28 @@ def collate_fn(batch):
     audio_tensors, eda_tensors = zip(*batch)
     max_length = max(tensor.size(-1) for tensor in audio_tensors)
     audio_features = audio_tensors[0].size(0)
+    
+    # Determine number of channels from the audio tensors
+    # If audio is already in shape [features, length], we're adding a channel dimension
+    num_channels = 1
+    if len(audio_tensors[0].shape) > 2:
+        num_channels = audio_tensors[0].size(0)
+        audio_features = audio_tensors[0].size(1)
 
-    padded_audio = torch.zeros(len(batch), audio_features, max_length)
+    padded_audio = torch.zeros(len(batch), num_channels, audio_features, max_length)
     padded_eda = torch.zeros(len(batch), max_length)
 
     for i, (audio, eda) in enumerate(batch):
         audio_length = audio.size(-1)
         eda_length = eda.size(-1)
-        padded_audio[i, :, -audio_length:] = audio
+        
+        if len(audio.shape) > 2:
+            # If audio already has channel dimension
+            padded_audio[i, :, :, -audio_length:] = audio
+        else:
+            # If audio is in shape [features, length]
+            padded_audio[i, 0, :, -audio_length:] = audio
+            
         padded_eda[i, -eda_length:] = eda
 
     return padded_audio, padded_eda
