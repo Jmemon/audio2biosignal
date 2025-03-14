@@ -9,13 +9,28 @@ Create a custom training function for the audio2biosignal project. The models ar
 Perform rigorous input validation.
 Ensure all failure points are handled gracefully via logging and/or raising exceptions with helpful debugging messages.
 Include information-dense comments.
+DO NOT create a stub. Fully implement the function.
 
 ## Context
 ### Beginning Context
 src/configs.py (read-only)
+src/loss.py (read-only)
+src/optimizer.py (read-only)
+src/model/tcn.py (read-only)
+src/model/wavenet.py (read-only)
+src/data/dataloader.py (read-only)
+src/data/datasets/hku956.py (read-only)
+src/data/datasets/pmemo2019.py (read-only)
 
 ### Ending Context
 src/configs.py (read-only)
+src/loss.py (read-only)
+src/optimizer.py (read-only)
+src/model/tcn.py (read-only)
+src/model/wavenet.py (read-only)
+src/data/dataloader.py (read-only)
+src/data/datasets/hku956.py (read-only)
+src/data/datasets/pmemo2019.py (read-only)
 src/train.py
 
 ## Low-Level Tasks
