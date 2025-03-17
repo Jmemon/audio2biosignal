@@ -86,7 +86,8 @@ def run_script(script_path: Path, script_args: List[str] = None) -> Tuple[str, b
 
 def get_editable_files(stacktrace: str, repo_path: Path) -> List[Path]:
     """
-    Parse the stacktrace to get any paths that reference files in the repo.
+    Get the file that contains the lowest-level function in stacktrace above the script,
+    and recursively find all files that import this file or any of its importers.
     
     Args:
         stacktrace: The error stacktrace
@@ -99,19 +100,64 @@ def get_editable_files(stacktrace: str, repo_path: Path) -> List[Path]:
     repo_path = repo_path.resolve()
     
     # Regular expression to find file paths in stacktrace
-    # Looks for patterns like "File "/path/to/file.py", line 123"
     file_pattern = r'File "([^"]+)", line \d+'
     file_matches = re.findall(file_pattern, stacktrace)
     
-    editable_files = []
+    # Find the last repo-contained path in the stacktrace
+    problem_root = None
+    for file_path in reversed(file_matches):
+        path = Path(file_path).resolve()
+        if str(path).startswith(str(repo_path)) and path.exists() and path.is_file():
+            problem_root = path
+            break
+    
+    if not problem_root:
+        return []
+    
+    # Find all Python files in the repo
+    all_py_files = list(repo_path.glob('**/*.py'))
+    
+    # Recursively find all files that import problem_root or any of its importers
+    editable_files = set()
+    files_to_process = {problem_root}
+    processed_files = set()
+    
+    while files_to_process:
+        current_file = files_to_process.pop()
+        processed_files.add(current_file)
+        editable_files.add(current_file)
+        
+        # Find files that import the current file
+        current_module = current_file.stem
+        
+        for py_file in all_py_files:
+            if py_file in processed_files:
+                continue
+                
+            try:
+                with open(py_file, 'r') as f:
+                    content = f.read()
+                    
+                # Check for imports of the current module
+                # This is a simple check and might miss some complex import patterns
+                if re.search(rf'(from|import)\s+.*{current_module}', content):
+                    files_to_process.add(py_file)
+            except Exception as e:
+                print(f"Error reading {py_file}: {e}")
+    
+    # Convert set to list and preserve order based on original stacktrace
+    ordered_editable_files = []
     for file_path in file_matches:
         path = Path(file_path).resolve()
-        # Check if the file is within the repo
-        if str(path).startswith(str(repo_path)) and path.exists() and path.is_file():
-            editable_files.append(path)
+        if path in editable_files and path not in ordered_editable_files:
+            ordered_editable_files.append(path)
     
-    # Deduplicate the list while preserving order
-    return list(dict.fromkeys(editable_files))
+    # Add any remaining files that weren't in the stacktrace
+    for path in editable_files:
+        if path not in ordered_editable_files:
+            ordered_editable_files.append(path)
+    
+    return ordered_editable_files
 
 def get_readonly_files(stacktrace: str, repo_path: Path) -> List[Path]:
     """
