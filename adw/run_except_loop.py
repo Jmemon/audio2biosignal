@@ -226,8 +226,8 @@ def main():
         # Run the script in a loop until no exceptions are thrown
         loop_flag = True
         iteration = 1
-    
-    while loop_flag and iteration <= args.max_iterations:
+        
+        while loop_flag and iteration <= args.max_iterations:
         print(f"\n=== Iteration {iteration} ===")
         print(f"Running script: {script_path}")
         if args.script_args:
@@ -337,19 +337,19 @@ Keep the summary technical but easy to understand.
         print(f"Error generating summary: {e}")
         summary = "Failed to generate summary."
     
-    # Ask user if they want to merge changes
-    merge_response = input(f"\nWould you like to merge these changes into the '{original_branch}' branch? (y/n): ").strip().lower()
-    if merge_response in ('y', 'yes'):
-        try:
-            # Switch to original branch and merge
-            repo.git.checkout(original_branch)
-            repo.git.merge(branch_name)
-            print(f"Successfully merged changes from {branch_name} into {original_branch}.")
-        except git.GitCommandError as e:
-            print(f"Error merging changes: {e}")
-            print("Please resolve conflicts manually and merge the branch.")
-    else:
-        print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
+        # Ask user if they want to merge changes
+        merge_response = input(f"\nWould you like to merge these changes into the '{original_branch}' branch? (y/n): ").strip().lower()
+        if merge_response in ('y', 'yes'):
+            try:
+                # Switch to original branch and merge
+                repo.git.checkout(original_branch)
+                repo.git.merge(branch_name)
+                print(f"Successfully merged changes from {branch_name} into {original_branch}.")
+            except git.GitCommandError as e:
+                print(f"Error merging changes: {e}")
+                print("Please resolve conflicts manually and merge the branch.")
+        else:
+            print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
     
     except Exception as e:
         print(f"An error occurred: {e}")
