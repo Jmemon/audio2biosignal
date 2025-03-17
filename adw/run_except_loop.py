@@ -272,7 +272,7 @@ def main():
                 read_only_fnames=readonly_files_str,
                 auto_commits=False,
                 suggest_shell_commands=False,
-                yes=True
+                io=InputOutput(yes=True)
             )
             
             # Create prompt for the LLM
