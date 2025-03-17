@@ -18,6 +18,7 @@ import git
 import anthropic
 from aider.coders import Coder
 from aider.io import InputOutput
+from aider.models import Model
 
 def create_branch(script_name: Union[str, Path]) -> str:
     """
@@ -260,6 +261,9 @@ def main():
             # Convert Path objects to strings for aider
             editable_files_str = [str(f) for f in editable_files]
             readonly_files_str = [str(f) for f in readonly_files]
+            
+            # Create Model instance
+            model = Model("claude-3-7-sonnet-latest")
             
             # Create aider Coder instance using the create method
             coder = Coder.create(
