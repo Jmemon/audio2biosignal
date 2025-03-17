@@ -290,15 +290,10 @@ def main():
             print(result)
             print("Analyzing stacktrace...")
             
-            # Get editable and read-only files from the stacktrace
+            # Get editable files from the stacktrace
             editable_files = get_editable_files(result, src_dir)
-            readonly_files = get_readonly_files(result, src_dir)
-            
-            # Make sure the lists are disjoint, with editable_files taking precedence
-            readonly_files = [f for f in readonly_files if f not in editable_files]
             
             print(f"Editable files: {[str(f) for f in editable_files]}")
-            print(f"Read-only files: {[str(f) for f in readonly_files]}")
             
             if not editable_files:
                 print("No editable files found in the stacktrace. Cannot proceed.")
@@ -306,7 +301,6 @@ def main():
             
             # Convert Path objects to strings for aider
             editable_files_str = [str(f) for f in editable_files]
-            readonly_files_str = [str(f) for f in readonly_files]
             
             # Create Model instance
             model = Model("claude-3-7-sonnet-latest")
@@ -315,7 +309,6 @@ def main():
             coder = Coder.create(
                 main_model=model,
                 fnames=editable_files_str,
-                read_only_fnames=readonly_files_str,
                 auto_commits=False,
                 suggest_shell_commands=False,
                 io=InputOutput(yes=True)
