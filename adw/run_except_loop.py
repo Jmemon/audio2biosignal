@@ -228,129 +228,129 @@ def main():
         iteration = 1
         
         while loop_flag and iteration <= args.max_iterations:
-        print(f"\n=== Iteration {iteration} ===")
-        print(f"Running script: {script_path}")
-        if args.script_args:
-            print(f"With arguments: {' '.join(args.script_args)}")
-        
-        result, loop_flag = run_script(script_path, args.script_args)
-        
-        if not loop_flag:
-            print("Script ran successfully! No exceptions thrown.")
-            break
-        
-        print("Exception caught:")
-        print(result)
-        print("Analyzing stacktrace...")
-        
-        # Get editable and read-only files from the stacktrace
-        editable_files = get_editable_files(result, src_dir)
-        readonly_files = get_readonly_files(result, src_dir)
-        
-        # Make sure the lists are disjoint, with editable_files taking precedence
-        readonly_files = [f for f in readonly_files if f not in editable_files]
-        
-        print(f"Editable files: {[str(f) for f in editable_files]}")
-        print(f"Read-only files: {[str(f) for f in readonly_files]}")
-        
-        if not editable_files:
-            print("No editable files found in the stacktrace. Cannot proceed.")
-            break
-        
-        # Convert Path objects to strings for aider
-        editable_files_str = [str(f) for f in editable_files]
-        readonly_files_str = [str(f) for f in readonly_files]
-        
-        # Create aider Coder instance using the create method
-        coder = Coder.create(
-            model="claude-3-7-sonnet-latest",
-            fnames=editable_files_str,
-            read_only_fnames=readonly_files_str,
-            auto_commit=False,
-            suggest_shell_commands=False,
-            yes=True
-        )
-        
-        # Create prompt for the LLM
-        prompt = f"""
-The following exception occurred when running '{script_path}':
+            print(f"\n=== Iteration {iteration} ===")
+            print(f"Running script: {script_path}")
+            if args.script_args:
+                print(f"With arguments: {' '.join(args.script_args)}")
+            
+            result, loop_flag = run_script(script_path, args.script_args)
+            
+            if not loop_flag:
+                print("Script ran successfully! No exceptions thrown.")
+                break
+            
+            print("Exception caught:")
+            print(result)
+            print("Analyzing stacktrace...")
+            
+            # Get editable and read-only files from the stacktrace
+            editable_files = get_editable_files(result, src_dir)
+            readonly_files = get_readonly_files(result, src_dir)
+            
+            # Make sure the lists are disjoint, with editable_files taking precedence
+            readonly_files = [f for f in readonly_files if f not in editable_files]
+            
+            print(f"Editable files: {[str(f) for f in editable_files]}")
+            print(f"Read-only files: {[str(f) for f in readonly_files]}")
+            
+            if not editable_files:
+                print("No editable files found in the stacktrace. Cannot proceed.")
+                break
+            
+            # Convert Path objects to strings for aider
+            editable_files_str = [str(f) for f in editable_files]
+            readonly_files_str = [str(f) for f in readonly_files]
+            
+            # Create aider Coder instance using the create method
+            coder = Coder.create(
+                model="claude-3-7-sonnet-latest",
+                fnames=editable_files_str,
+                read_only_fnames=readonly_files_str,
+                auto_commit=False,
+                suggest_shell_commands=False,
+                yes=True
+            )
+            
+            # Create prompt for the LLM
+            prompt = f"""
+    The following exception occurred when running '{script_path}':
 
-{result}
+    {result}
 
-Please fix the code so it runs without exceptions. Focus only on addressing the specific error shown in the stacktrace.
+    Please fix the code so it runs without exceptions. Focus only on addressing the specific error shown in the stacktrace.
 
-Important guidelines:
-1. Do not change the fundamental logic or architecture of the code
-2. Make minimal, targeted changes to fix the specific exception
-3. Focus on issues like incorrect tensor dimensions, type mismatches, or parameter errors
-4. Explain your reasoning for each change
+    Important guidelines:
+    1. Do not change the fundamental logic or architecture of the code
+    2. Make minimal, targeted changes to fix the specific exception
+    3. Focus on issues like incorrect tensor dimensions, type mismatches, or parameter errors
+    4. Explain your reasoning for each change
 
-Only modify the files I've provided as editable. The read-only files are for context only.
-"""
+    Only modify the files I've provided as editable. The read-only files are for context only.
+    """
+            
+            # Run aider with the prompt
+            coder.run(prompt)
+            
+            iteration += 1
+    
+        if iteration > args.max_iterations:
+            print(f"Reached maximum number of iterations ({args.max_iterations}). Exiting loop.")
         
-        # Run aider with the prompt
-        coder.run(prompt)
+        # Generate diff from the start commit of the branch to the current working state
+        diff = repo.git.diff(initial_commit.hexsha, '--', src_dir)
         
-        iteration += 1
-    
-    if iteration > args.max_iterations:
-        print(f"Reached maximum number of iterations ({args.max_iterations}). Exiting loop.")
-    
-    # Generate diff from the start commit of the branch to the current working state
-    diff = repo.git.diff(initial_commit.hexsha, '--', src_dir)
-    
-    if not diff:
-        print("No changes were made to fix exceptions.")
-        return
-    
-    print("\n=== Changes made to fix exceptions ===")
-    print(diff)
-    
-    # Use Anthropic API directly to summarize the changes
-    client = anthropic.Anthropic()
-    
-    summary_prompt = f"""
-Please provide a concise summary of the following git diff that fixed exceptions in the code:
+        if not diff:
+            print("No changes were made to fix exceptions.")
+            return
+        
+        print("\n=== Changes made to fix exceptions ===")
+        print(diff)
+        
+        # Use Anthropic API directly to summarize the changes
+        client = anthropic.Anthropic()
+        
+        summary_prompt = f"""
+    Please provide a concise summary of the following git diff that fixed exceptions in the code:
 
-{diff}
+    {diff}
 
-Focus on:
-1. What was the root cause of the exception(s)
-2. What changes were made to fix it
-3. Any potential side effects of these changes
+    Focus on:
+    1. What was the root cause of the exception(s)
+    2. What changes were made to fix it
+    3. Any potential side effects of these changes
 
-Keep the summary technical but easy to understand.
-"""
-    
-    try:
-        response = client.messages.create(
-            model="claude-3-7-sonnet-latest",
-            max_tokens=1000,
-            messages=[
-                {"role": "user", "content": summary_prompt}
-            ]
-        )
-        summary = response.content[0].text
-        print("\n=== Summary of changes ===")
-        print(summary)
-    except Exception as e:
-        print(f"Error generating summary: {e}")
-        summary = "Failed to generate summary."
-    
-        # Ask user if they want to merge changes
-        merge_response = input(f"\nWould you like to merge these changes into the '{original_branch}' branch? (y/n): ").strip().lower()
-        if merge_response in ('y', 'yes'):
-            try:
-                # Switch to original branch and merge
-                repo.git.checkout(original_branch)
-                repo.git.merge(branch_name)
-                print(f"Successfully merged changes from {branch_name} into {original_branch}.")
-            except git.GitCommandError as e:
-                print(f"Error merging changes: {e}")
-                print("Please resolve conflicts manually and merge the branch.")
-        else:
-            print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
-    
+    Keep the summary technical but easy to understand.
+    """
+        
+        try:
+            response = client.messages.create(
+                model="claude-3-7-sonnet-latest",
+                max_tokens=1000,
+                messages=[
+                    {"role": "user", "content": summary_prompt}
+                ]
+            )
+            summary = response.content[0].text
+            print("\n=== Summary of changes ===")
+            print(summary)
+        except Exception as e:
+            print(f"Error generating summary: {e}")
+            summary = "Failed to generate summary."
+        
+            # Ask user if they want to merge changes
+            merge_response = input(f"\nWould you like to merge these changes into the '{original_branch}' branch? (y/n): ").strip().lower()
+            if merge_response in ('y', 'yes'):
+                try:
+                    # Switch to original branch and merge
+                    repo.git.checkout(original_branch)
+                    repo.git.merge(branch_name)
+                    print(f"Successfully merged changes from {branch_name} into {original_branch}.")
+                except git.GitCommandError as e:
+                    print(f"Error merging changes: {e}")
+                    print("Please resolve conflicts manually and merge the branch.")
+            else:
+                print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
+        
     except Exception as e:
         print(f"An error occurred: {e}")
         # Clean up: switch back to original branch and delete the new branch if it was created
