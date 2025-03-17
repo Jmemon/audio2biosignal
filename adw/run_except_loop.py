@@ -270,7 +270,7 @@ def main():
                 main_model=model,
                 fnames=editable_files_str,
                 read_only_fnames=readonly_files_str,
-                auto_commit=False,
+                auto_commits=False,
                 suggest_shell_commands=False,
                 yes=True
             )
