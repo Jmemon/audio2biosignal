@@ -203,6 +203,9 @@ def main():
         print("The script should be outside the source directory to avoid modifying it.")
         sys.exit(1)
     
+    # Store the current branch before switching
+    original_branch = repo.active_branch.name
+    
     # Create a new branch for the fixes
     branch_name = create_branch(script_path.name)
     
@@ -306,7 +309,7 @@ Keep the summary technical but easy to understand.
     
     try:
         response = client.messages.create(
-            model="claude-3-sonnet-20240229",
+            model="claude-3-7-sonnet-latest",
             max_tokens=1000,
             messages=[
                 {"role": "user", "content": summary_prompt}
@@ -320,13 +323,13 @@ Keep the summary technical but easy to understand.
         summary = "Failed to generate summary."
     
     # Ask user if they want to merge changes
-    merge_response = input("\nWould you like to merge these changes into main? (y/n): ").strip().lower()
+    merge_response = input(f"\nWould you like to merge these changes into the '{original_branch}' branch? (y/n): ").strip().lower()
     if merge_response in ('y', 'yes'):
         try:
-            # Switch to main branch and merge
-            repo.git.checkout('main')
+            # Switch to original branch and merge
+            repo.git.checkout(original_branch)
             repo.git.merge(branch_name)
-            print(f"Successfully merged changes from {branch_name} into main.")
+            print(f"Successfully merged changes from {branch_name} into {original_branch}.")
         except git.GitCommandError as e:
             print(f"Error merging changes: {e}")
             print("Please resolve conflicts manually and merge the branch.")
