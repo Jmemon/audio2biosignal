@@ -267,7 +267,7 @@ def main():
             
             # Create aider Coder instance using the create method
             coder = Coder.create(
-                main_model="claude-3-7-sonnet-latest",
+                main_model=model,
                 fnames=editable_files_str,
                 read_only_fnames=readonly_files_str,
                 auto_commit=False,
