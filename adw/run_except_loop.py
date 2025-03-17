@@ -299,8 +299,17 @@ def main():
                 print("No editable files found in the stacktrace. Cannot proceed.")
                 break
             
+            # Get all Python files in src_dir that are not in editable_files
+            read_only_files = []
+            for py_file in src_dir.glob('**/*.py'):
+                if py_file not in editable_files:
+                    read_only_files.append(py_file)
+            
+            print(f"Read-only files: {len(read_only_files)} Python files")
+            
             # Convert Path objects to strings for aider
             editable_files_str = [str(f) for f in editable_files]
+            read_only_files_str = [str(f) for f in read_only_files]
             
             # Create Model instance
             model = Model("claude-3-7-sonnet-latest")
@@ -309,6 +318,7 @@ def main():
             coder = Coder.create(
                 main_model=model,
                 fnames=editable_files_str,
+                readonly_fnames=read_only_files_str,
                 auto_commits=False,
                 suggest_shell_commands=False,
                 io=InputOutput(yes=True)
