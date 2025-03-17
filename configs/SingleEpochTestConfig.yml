@@ -1,0 +1,81 @@
+experiment_name: "SingleEpochTest"
+seed: 42
+
+model:
+  architecture: "tcn"
+  params:
+    input_size: 40  # MFCC features
+    output_size: 1  # EDA signal output
+    num_blocks: 2   # Very small number of blocks for quick testing
+    num_channels: 16  # Small channel size for quick testing
+    kernel_size: 3   # Small kernel for simplicity
+    dropout: 0.1     # Minimal dropout for testing
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.001  # Slightly higher learning rate for quick convergence
+  weight_decay: 0.0001  # Minimal weight decay for testing
+  beta1: 0.9
+  beta2: 0.999
+  momentum: 0.0
+  warmup_steps: 0      # No warmup needed for single epoch
+  warmup_ratio: 0.0
+  scheduler: "constant"  # No scheduler needed for single epoch
+  gradient_clip_val: 1.0
+
+data:
+  train_datasets:
+    - pmemo2019
+    - hku956
+  val_datasets:
+    - pmemo2019
+    - hku956
+  test_datasets:
+    - pmemo2019
+    - hku956
+  batch_size: 8   # Small batch size for quick iteration
+  num_workers: 2  # Minimal workers for testing
+  prefetch_size: 1  # Minimal prefetch for testing
+
+loss:
+  name: "mse"  # Simple MSE loss for testing
+
+hardware:
+  device: "cuda"  # Can be changed to "mps" or "cpu" as needed
+  precision: "fp32"  # Full precision for testing
+  distributed: false  # No distributed training for testing
+  num_gpus: 1  # Single GPU for testing
+
+metrics:
+  compute_metrics: true
+  train_metrics:
+    - "loss"
+    - "mse"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"  # Include DTW to test all metrics
+  val_check_interval: 1.0
+  early_stopping: false  # No early stopping needed for single epoch
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.01
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_entity: null
+  wandb_run_name: "SingleEpochTest_Run"
+  wandb_tags: ["test", "single_epoch", "tcn", "mixed_dataset"]
+  log_every_n_steps: 10  # Frequent logging for testing
+
+checkpoint:
+  save_top_k: 1  # Only save best model
+  checkpoint_dir: "checkpoints/single_epoch_test"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  save_every_n_steps: 1000
+  load_from_checkpoint: null
+
+train:
+  max_epochs: 1  # Single epoch for testing
+  accumulate_grad_batches: 1
