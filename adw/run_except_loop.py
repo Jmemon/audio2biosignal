@@ -51,19 +51,24 @@ def create_branch(script_name: Union[str, Path]) -> str:
         print(f"Git error: {e}")
         sys.exit(1)
 
-def run_script(script_path: Path) -> Tuple[str, bool]:
+def run_script(script_path: Path, script_args: List[str] = None) -> Tuple[str, bool]:
     """
-    Run the given Python script and capture stdout/stderr.
+    Run the given Python script with optional arguments and capture stdout/stderr.
     
     Args:
         script_path: Path to the Python script to run
+        script_args: Optional list of arguments to pass to the script
         
     Returns:
         Tuple[str, bool]: (output or error message, error flag)
     """
+    cmd = [sys.executable, str(script_path)]
+    if script_args:
+        cmd.extend(script_args)
+        
     try:
         result = subprocess.run(
-            [sys.executable, str(script_path)], 
+            cmd, 
             check=True,
             capture_output=True,
             text=True
@@ -181,6 +186,8 @@ def main():
     parser.add_argument("src_dir", help="The path to the source directory we are fixing")
     parser.add_argument("--max-iterations", type=int, default=10, 
                         help="Maximum number of iterations to attempt (default: 10)")
+    parser.add_argument("--script-args", nargs=argparse.REMAINDER, 
+                        help="Arguments to pass to the script being run")
     args = parser.parse_args()
     
     # Convert paths to Path objects
@@ -219,8 +226,10 @@ def main():
     while loop_flag and iteration <= args.max_iterations:
         print(f"\n=== Iteration {iteration} ===")
         print(f"Running script: {script_path}")
+        if args.script_args:
+            print(f"With arguments: {' '.join(args.script_args)}")
         
-        result, loop_flag = run_script(script_path)
+        result, loop_flag = run_script(script_path, args.script_args)
         
         if not loop_flag:
             print("Script ran successfully! No exceptions thrown.")
