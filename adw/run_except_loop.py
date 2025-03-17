@@ -2,7 +2,7 @@
 """
 Run-Except Loop
 
-This script runs a command in a loop, catches exceptions, and uses an LLM to fix the code
+This script runs a Python script in a loop, catches exceptions, and uses an LLM to fix the code
 until no exceptions are thrown. It's designed for minor errors like PyTorch tensor dimension
 mismatches, not for fundamental refactors of a repository.
 """
@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
 import git
 import aider
+import anthropic
 from aider.io import InputOutput
 
 def create_branch(script_name: Union[str, Path]) -> str:
@@ -50,20 +51,19 @@ def create_branch(script_name: Union[str, Path]) -> str:
         print(f"Git error: {e}")
         sys.exit(1)
 
-def run_script(command: str) -> Tuple[str, bool]:
+def run_script(script_path: Path) -> Tuple[str, bool]:
     """
-    Run the given command and capture stdout/stderr.
+    Run the given Python script and capture stdout/stderr.
     
     Args:
-        command: Command to run
+        script_path: Path to the Python script to run
         
     Returns:
         Tuple[str, bool]: (output or error message, error flag)
     """
     try:
         result = subprocess.run(
-            command, 
-            shell=True, 
+            [sys.executable, str(script_path)], 
             check=True,
             capture_output=True,
             text=True
@@ -71,7 +71,7 @@ def run_script(command: str) -> Tuple[str, bool]:
         return result.stdout, False  # No error
     except subprocess.CalledProcessError as e:
         # Return error message + stacktrace
-        error_output = f"Command failed with exit code {e.returncode}\n"
+        error_output = f"Script failed with exit code {e.returncode}\n"
         if e.stdout:
             error_output += f"STDOUT:\n{e.stdout}\n"
         if e.stderr:
@@ -168,31 +168,56 @@ def main():
     """
     Main function to run the script in a loop, catch exceptions, and fix the code.
     """
+    # Ensure we're in the root of a git repository
+    try:
+        repo = git.Repo(os.getcwd())
+    except git.InvalidGitRepositoryError:
+        print("Error: Current directory is not a git repository. Please run from the root of your project.")
+        sys.exit(1)
+    
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description="Run a script in a loop and fix exceptions")
-    parser.add_argument("run_command", help="The command to run the script")
-    parser.add_argument("target_repo_path", help="The path to the repository we are fixing")
+    parser.add_argument("script_path", help="Path to the Python script to run")
+    parser.add_argument("src_dir", help="The path to the source directory we are fixing")
+    parser.add_argument("--max-iterations", type=int, default=10, 
+                        help="Maximum number of iterations to attempt (default: 10)")
     args = parser.parse_args()
     
+    # Convert paths to Path objects
+    script_path = Path(args.script_path).resolve()
+    src_dir = Path(args.src_dir).resolve()
+    
+    # Check that script_path exists
+    if not script_path.exists() or not script_path.is_file():
+        print(f"Error: Script {script_path} does not exist or is not a file.")
+        sys.exit(1)
+    
+    # Check that src_dir exists
+    if not src_dir.exists() or not src_dir.is_dir():
+        print(f"Error: Source directory {src_dir} does not exist or is not a directory.")
+        sys.exit(1)
+    
+    # Check that script_path is not in src_dir
+    if str(script_path).startswith(str(src_dir)):
+        print(f"Error: Script {script_path} is inside the source directory {src_dir}.")
+        print("The script should be outside the source directory to avoid modifying it.")
+        sys.exit(1)
+    
     # Create a new branch for the fixes
-    script_name = args.run_command.split()[0]
-    branch_name = create_branch(script_name)
+    branch_name = create_branch(script_path.name)
     
     # Get the initial commit hash for later comparison
-    repo = git.Repo(os.getcwd())
     initial_commit = repo.head.commit
-    
-    # Convert repo path to Path object
-    repo_path = Path(args.target_repo_path).resolve()
     
     # Run the script in a loop until no exceptions are thrown
     loop_flag = True
     iteration = 1
     
-    while loop_flag:
+    while loop_flag and iteration <= args.max_iterations:
         print(f"\n=== Iteration {iteration} ===")
-        print(f"Running command: {args.run_command}")
+        print(f"Running script: {script_path}")
         
-        result, loop_flag = run_script(args.run_command)
+        result, loop_flag = run_script(script_path)
         
         if not loop_flag:
             print("Script ran successfully! No exceptions thrown.")
@@ -201,8 +226,8 @@ def main():
         print("Exception caught. Analyzing stacktrace...")
         
         # Get editable and read-only files from the stacktrace
-        editable_files = get_editable_files(result, repo_path)
-        readonly_files = get_readonly_files(result, repo_path)
+        editable_files = get_editable_files(result, src_dir)
+        readonly_files = get_readonly_files(result, src_dir)
         
         # Make sure the lists are disjoint, with editable_files taking precedence
         readonly_files = [f for f in readonly_files if f not in editable_files]
@@ -218,19 +243,19 @@ def main():
         editable_files_str = [str(f) for f in editable_files]
         readonly_files_str = [str(f) for f in readonly_files]
         
-        # Create aider Coder instance
-        coder = aider.Coder(
+        # Create aider Coder instance using the create method
+        coder = aider.Coder.create(
             model="claude-3-7-sonnet-latest",
             fnames=editable_files_str,
             read_only_fnames=readonly_files_str,
             auto_commit=False,
             suggest_shell_commands=False,
-            io=InputOutput(yes=True)
+            yes=True
         )
         
         # Create prompt for the LLM
         prompt = f"""
-The following exception occurred when running '{args.run_command}':
+The following exception occurred when running '{script_path}':
 
 {result}
 
@@ -249,14 +274,12 @@ Only modify the files I've provided as editable. The read-only files are for con
         coder.run(prompt)
         
         iteration += 1
-        
-        # Limit the number of iterations to prevent infinite loops
-        if iteration > 10:
-            print("Reached maximum number of iterations (10). Exiting loop.")
-            break
+    
+    if iteration > args.max_iterations:
+        print(f"Reached maximum number of iterations ({args.max_iterations}). Exiting loop.")
     
     # Generate diff from the start commit of the branch to the current working state
-    diff = repo.git.diff(initial_commit.hexsha, '--', repo_path)
+    diff = repo.git.diff(initial_commit.hexsha, '--', src_dir)
     
     if not diff:
         print("No changes were made to fix exceptions.")
@@ -265,11 +288,8 @@ Only modify the files I've provided as editable. The read-only files are for con
     print("\n=== Changes made to fix exceptions ===")
     print(diff)
     
-    # Use aider to summarize the changes
-    summarizer = aider.Coder(
-        model="claude-3-7-sonnet-latest",
-        io=InputOutput(yes=True)
-    )
+    # Use Anthropic API directly to summarize the changes
+    client = anthropic.Anthropic()
     
     summary_prompt = f"""
 Please provide a concise summary of the following git diff that fixed exceptions in the code:
@@ -284,8 +304,34 @@ Focus on:
 Keep the summary technical but easy to understand.
 """
     
-    print("\n=== Summary of changes ===")
-    summarizer.run(summary_prompt)
+    try:
+        response = client.messages.create(
+            model="claude-3-sonnet-20240229",
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": summary_prompt}
+            ]
+        )
+        summary = response.content[0].text
+        print("\n=== Summary of changes ===")
+        print(summary)
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        summary = "Failed to generate summary."
+    
+    # Ask user if they want to merge changes
+    merge_response = input("\nWould you like to merge these changes into main? (y/n): ").strip().lower()
+    if merge_response in ('y', 'yes'):
+        try:
+            # Switch to main branch and merge
+            repo.git.checkout('main')
+            repo.git.merge(branch_name)
+            print(f"Successfully merged changes from {branch_name} into main.")
+        except git.GitCommandError as e:
+            print(f"Error merging changes: {e}")
+            print("Please resolve conflicts manually and merge the branch.")
+    else:
+        print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
 
 if __name__ == "__main__":
     main()
