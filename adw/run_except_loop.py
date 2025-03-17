@@ -214,12 +214,14 @@ def main():
     
     # Store the current branch before switching
     original_branch = repo.active_branch.name
+    branch_name = None
     
-    # Create a new branch for the fixes
-    branch_name = create_branch(script_path.name)
-    
-    # Get the initial commit hash for later comparison
-    initial_commit = repo.head.commit
+    try:
+        # Create a new branch for the fixes
+        branch_name = create_branch(script_path.name)
+        
+        # Get the initial commit hash for later comparison
+        initial_commit = repo.head.commit
     
     # Run the script in a loop until no exceptions are thrown
     loop_flag = True
@@ -348,6 +350,21 @@ Keep the summary technical but easy to understand.
             print("Please resolve conflicts manually and merge the branch.")
     else:
         print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Clean up: switch back to original branch and delete the new branch if it was created
+        if branch_name:
+            try:
+                print(f"Switching back to original branch '{original_branch}'")
+                repo.git.checkout(original_branch)
+                
+                print(f"Deleting branch '{branch_name}'")
+                repo.git.branch('-D', branch_name)
+                print(f"Branch '{branch_name}' deleted successfully")
+            except git.GitCommandError as git_err:
+                print(f"Error during cleanup: {git_err}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
