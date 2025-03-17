@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
 import git
-import aider
 import anthropic
+from aider.coders import Coder
 from aider.io import InputOutput
 
 def create_branch(script_name: Union[str, Path]) -> str:
@@ -92,7 +92,7 @@ def get_editable_files(stacktrace: str, repo_path: Path) -> List[Path]:
         repo_path: Path to the repository
         
     Returns:
-        List[Path]: List of editable file paths
+        List[Path]: List of editable file paths (deduplicated)
     """
     # Convert repo_path to absolute path
     repo_path = repo_path.resolve()
@@ -109,7 +109,8 @@ def get_editable_files(stacktrace: str, repo_path: Path) -> List[Path]:
         if str(path).startswith(str(repo_path)) and path.exists() and path.is_file():
             editable_files.append(path)
     
-    return editable_files
+    # Deduplicate the list while preserving order
+    return list(dict.fromkeys(editable_files))
 
 def get_readonly_files(stacktrace: str, repo_path: Path) -> List[Path]:
     """
@@ -121,7 +122,7 @@ def get_readonly_files(stacktrace: str, repo_path: Path) -> List[Path]:
         repo_path: Path to the repository
         
     Returns:
-        List[Path]: List of read-only file paths
+        List[Path]: List of read-only file paths (deduplicated)
     """
     # Convert repo_path to absolute path
     repo_path = repo_path.resolve()
@@ -167,7 +168,8 @@ def get_readonly_files(stacktrace: str, repo_path: Path) -> List[Path]:
     if problem_root not in dependent_files:
         dependent_files.append(problem_root)
     
-    return dependent_files
+    # Deduplicate the list while preserving order
+    return list(dict.fromkeys(dependent_files))
 
 def main():
     """
@@ -258,7 +260,7 @@ def main():
         readonly_files_str = [str(f) for f in readonly_files]
         
         # Create aider Coder instance using the create method
-        coder = aider.Coder.create(
+        coder = Coder.create(
             model="claude-3-7-sonnet-latest",
             fnames=editable_files_str,
             read_only_fnames=readonly_files_str,
