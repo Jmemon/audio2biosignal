@@ -222,10 +222,10 @@ def main():
         
         # Get the initial commit hash for later comparison
         initial_commit = repo.head.commit
-    
-    # Run the script in a loop until no exceptions are thrown
-    loop_flag = True
-    iteration = 1
+        
+        # Run the script in a loop until no exceptions are thrown
+        loop_flag = True
+        iteration = 1
     
     while loop_flag and iteration <= args.max_iterations:
         print(f"\n=== Iteration {iteration} ===")
@@ -350,7 +350,7 @@ Keep the summary technical but easy to understand.
             print("Please resolve conflicts manually and merge the branch.")
     else:
         print(f"Changes remain in branch '{branch_name}'. You can merge them later if needed.")
-        
+    
     except Exception as e:
         print(f"An error occurred: {e}")
         # Clean up: switch back to original branch and delete the new branch if it was created
