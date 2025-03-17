@@ -235,7 +235,9 @@ def main():
             print("Script ran successfully! No exceptions thrown.")
             break
         
-        print("Exception caught. Analyzing stacktrace...")
+        print("Exception caught:")
+        print(result)
+        print("Analyzing stacktrace...")
         
         # Get editable and read-only files from the stacktrace
         editable_files = get_editable_files(result, src_dir)
