@@ -5,7 +5,7 @@ from scipy.signal import butter, filtfilt, resample
 from pathlib import Path
 from src.configs import AudioEDAFeatureConfig
 
-def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
+def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
     """
     Preprocess electrodermal activity (EDA) signals for neural network input with configurable signal processing.
     
@@ -16,8 +16,11 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
     Parameters
     ----------
     eda_signal : torch.Tensor
-        Raw EDA signal as a 1D tensor or numpy array. Expected to be sampled at 1000Hz originally.
+        Raw EDA signal as a 1D tensor or numpy array.
         Can handle both torch.Tensor and numpy.ndarray inputs transparently.
+    
+    sample_rate : int
+        Original sampling rate of the EDA signal in Hz.
     
     feature_config : AudioEDAFeatureConfig
         Configuration object controlling signal processing parameters:
@@ -35,7 +38,6 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
     
     Notes
     -----
-    - Assumes original EDA sampling rate of 1000Hz if resampling is needed
     - Applies Butterworth filters of order 2 when filtering is enabled
     - Ensures memory contiguity for efficient tensor operations
     - Thread-safe but not optimized for batch processing
@@ -44,8 +46,8 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
     eda_data = eda_signal.numpy() if isinstance(eda_signal, torch.Tensor) else eda_signal
     print(f"[preprocess_eda] After conversion to numpy, eda_data shape: {eda_data.shape}")
     
-    if feature_config.eda_original_sample_rate != feature_config.mutual_sample_rate:
-        resample_factor = feature_config.mutual_sample_rate / feature_config.eda_original_sample_rate
+    if sample_rate != feature_config.mutual_sample_rate:
+        resample_factor = feature_config.mutual_sample_rate / sample_rate
         eda_data = resample(eda_data, int(len(eda_data) * resample_factor))
         print(f"[preprocess_eda] After resampling, eda_data shape: {eda_data.shape}")
     if feature_config.eda_normalize:
