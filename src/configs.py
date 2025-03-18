@@ -216,6 +216,66 @@ class PMEmo2019Config(DatasetConfig):
     seed: int = 42
 
 class AudioEDAFeatureConfig(BaseModel):
+    """
+    Configuration for audio and electrodermal activity (EDA) signal preprocessing in biosignal modeling.
+    
+    AudioEDAFeatureConfig encapsulates the complete specification of signal processing parameters
+    for both audio and EDA modalities, ensuring consistent preprocessing across dataset loading,
+    feature extraction, and model training. It provides unified control over sampling rates,
+    normalization, and time-frequency transformations with sensible defaults for biosignal analysis.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Maintains modality-specific parameter groups with coordinated defaults
+        - Supports synchronized time-domain representations through aligned window sizes
+        - Enables independent control of filtering strategies for each modality
+    
+    Attributes:
+        mutual_sample_rate (int): Target sample rate in Hz for both modalities (default: 200)
+        
+        # Audio processing parameters
+        audio_normalize (bool): Whether to normalize audio amplitude to [-1, 1] (default: True)
+        audio_n_mfcc (int): Number of Mel-frequency cepstral coefficients (default: 40)
+        audio_n_mels (int): Number of Mel filterbank features (default: 128)
+        audio_window_size (int): STFT window size in samples (default: 400)
+        audio_hop_length (int): STFT hop length in samples (default: 160)
+        
+        # EDA processing parameters
+        eda_window_size (int): Analysis window size in samples (default: 400)
+        eda_hop_length (int): Analysis hop length in samples (default: 160)
+        eda_normalize (bool): Whether to normalize EDA signals (default: True)
+        filter_lowpass (bool): Apply 8Hz low-pass filter to EDA (default: True)
+        filter_highpass (bool): Apply 0.05Hz high-pass filter to EDA (default: False)
+    
+    Integration:
+        - Used by dataset classes to configure signal preprocessing
+        - Consumed by audio_preprocessing and eda_preprocessing modules
+        - Passed to dataset constructors alongside dataset-specific configs
+        - Controls feature extraction dimensionality and temporal resolution
+    
+    Example:
+        ```python
+        # Standard configuration with default parameters
+        feature_config = AudioEDAFeatureConfig()
+        
+        # Custom configuration for higher resolution processing
+        custom_config = AudioEDAFeatureConfig(
+            mutual_sample_rate=500,
+            audio_n_mfcc=60,
+            audio_n_mels=256,
+            filter_highpass=True
+        )
+        
+        # Use with dataset initialization
+        dataset = PMEmo2019Dataset(dataset_config, feature_config)
+        ```
+    
+    Limitations:
+        - No validation for parameter value ranges or relationships
+        - Window sizes must be manually coordinated for temporal alignment
+        - Fixed filter cutoff frequencies (8Hz lowpass, 0.05Hz highpass)
+        - No support for advanced audio features (e.g., spectral contrast, chroma)
+    """
     # Mutual configurations
     mutual_sample_rate: int = 200  # Hz
 
@@ -456,6 +516,45 @@ class ModelConfig(BaseModel):
     @field_validator('params')
     @classmethod
     def validate_params(cls, v, info):
+        """
+        Validates architecture-specific parameters for model configuration.
+        
+        This validator ensures that all required parameters for the selected neural network
+        architecture are present in the params dictionary. It enforces architecture-specific
+        schema validation by checking for the presence of mandatory parameters based on the
+        architecture type (tcn or wavenet).
+        
+        Architecture:
+            - Implements a Pydantic field validator pattern with architecture-specific validation
+            - Uses dictionary comprehension for efficient missing parameter detection
+            - Maintains O(n) time complexity where n is the number of required parameters
+            - Preserves input dictionary structure without modification when valid
+        
+        Parameters:
+            cls (Type[ModelConfig]): The ModelConfig class
+            v (Dict[str, Any]): The params dictionary to validate
+            info (ValidationInfo): Validation context containing the parent data
+        
+        Returns:
+            Dict[str, Any]: The validated params dictionary (unchanged if valid)
+        
+        Raises:
+            ValueError: If architecture is invalid or required parameters are missing
+                - When architecture is not 'tcn' or 'wavenet'
+                - When any required parameter for the specified architecture is missing
+        
+        Integration:
+            - Called automatically by Pydantic during ModelConfig instantiation
+            - Enables early validation before model construction attempts
+            - Provides detailed error messages identifying specific missing parameters
+            - Supports configuration loading from YAML with precise validation errors
+        
+        Limitations:
+            - Only validates parameter presence, not parameter types or value ranges
+            - Limited to two predefined architectures (tcn, wavenet)
+            - No validation for extraneous parameters that may be ignored
+            - Architecture-specific parameter lists must be updated when adding new architectures
+        """
         architecture = info.data.get('architecture')
         if architecture == 'tcn':
             required_params = ["input_size", "output_size", "num_blocks", "num_channels", "kernel_size", "dropout"]
@@ -542,6 +641,63 @@ class LoggingConfig(BaseModel):
     log_every_n_steps: int = 50
 
 class CheckpointConfig(BaseModel):
+    """
+    Configuration for model checkpointing and persistence in audio-to-biosignal modeling.
+    
+    CheckpointConfig encapsulates the complete specification of model saving, loading, and
+    selection strategies during training. It provides fine-grained control over checkpoint
+    frequency, selection criteria, and storage locations while maintaining compatibility
+    with the Hugging Face Transformers training infrastructure.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Supports both metric-based and frequency-based checkpoint selection
+        - Enables deterministic model selection through configurable monitoring criteria
+        - Maintains filesystem organization through centralized directory management
+    
+    Attributes:
+        checkpoint_dir (str): Directory path where model checkpoints will be saved
+        save_top_k (int): Number of best-performing models to retain (default: 3)
+        monitor (str): Metric name to monitor for checkpoint selection (default: "val_loss")
+        mode (Literal["min", "max"]): Whether to minimize or maximize the monitored metric (default: "min")
+        save_last (bool): Whether to always save the most recent model (default: True)
+        save_every_n_steps (int): Frequency of checkpointing in training steps (default: 1000)
+        load_from_checkpoint (Optional[str]): Path to a specific checkpoint for resuming training (default: None)
+    
+    Integration:
+        - Used by training scripts to configure model persistence strategy
+        - Consumed by Hugging Face TrainingArguments for checkpoint configuration
+        - Controls disk space usage through save_top_k parameter
+        - Enables training resumption through load_from_checkpoint parameter
+    
+    Example:
+        ```python
+        config = CheckpointConfig(
+            checkpoint_dir="./checkpoints/experiment_1",
+            save_top_k=5,
+            monitor="val_accuracy",
+            mode="max",
+            save_every_n_steps=500,
+            load_from_checkpoint="./checkpoints/pretrained/model.ckpt"
+        )
+        
+        # Configure TrainingArguments with this checkpoint configuration
+        training_args = TrainingArguments(
+            output_dir=config.checkpoint_dir,
+            save_steps=config.save_every_n_steps,
+            save_total_limit=config.save_top_k,
+            load_best_model_at_end=config.save_last,
+            metric_for_best_model=config.monitor,
+            greater_is_better=config.mode == 'max'
+        )
+        ```
+    
+    Limitations:
+        - No validation for directory existence or write permissions
+        - No automatic handling of checkpoint file naming conventions
+        - No support for distributed checkpoint strategies (e.g., sharded checkpoints)
+        - Limited to scalar metrics for checkpoint selection criteria
+    """
     save_top_k: int = 3
     checkpoint_dir: str
     monitor: str = "val_loss"
@@ -551,6 +707,70 @@ class CheckpointConfig(BaseModel):
     load_from_checkpoint: Optional[str] = None
 
 class HardwareConfig(BaseModel):
+    """
+    Configuration for hardware resources and computational precision in audio-to-biosignal modeling.
+    
+    HardwareConfig encapsulates the complete specification of hardware utilization strategy,
+    controlling device selection, numerical precision, and distributed training capabilities.
+    It provides a unified interface for configuring computational resources with appropriate
+    validation to prevent incompatible settings across different hardware platforms.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Enforces hardware-specific constraints through field validators
+        - Prevents invalid combinations of device types, precision, and distribution settings
+        - Maintains sensible defaults for common GPU-accelerated training scenarios
+    
+    Attributes:
+        device (Literal["cpu", "cuda", "mps"]): Computation device type (default: "cuda")
+            - "cpu": Use CPU for all computations
+            - "cuda": Use NVIDIA GPU(s) with CUDA
+            - "mps": Use Apple Metal Performance Shaders (M-series chips)
+        precision (Literal["fp32", "fp16", "bf16"]): Numerical precision for computations (default: "fp16")
+            - "fp32": 32-bit floating point (full precision)
+            - "fp16": 16-bit floating point (half precision)
+            - "bf16": 16-bit brain floating point (alternative half precision format)
+        distributed (bool): Whether to use distributed training across multiple devices (default: False)
+        num_gpus (int): Number of GPU devices to utilize (default: 1)
+    
+    Integration:
+        - Used by training scripts to configure PyTorch device selection
+        - Consumed by Hugging Face Trainer for mixed precision training setup
+        - Controls distributed training configuration in multi-GPU environments
+        - Validates hardware configurations before expensive model initialization
+    
+    Example:
+        ```python
+        # Standard GPU configuration with mixed precision
+        config = HardwareConfig(
+            device="cuda",
+            precision="fp16",
+            num_gpus=1
+        )
+        
+        # Multi-GPU distributed training
+        config = HardwareConfig(
+            device="cuda",
+            precision="fp16",
+            distributed=True,
+            num_gpus=4
+        )
+        
+        # Apple Silicon configuration
+        config = HardwareConfig(
+            device="mps",
+            precision="fp32",  # MPS only supports fp32
+            num_gpus=1         # MPS only supports single GPU
+        )
+        ```
+    
+    Limitations:
+        - MPS device limited to fp32 precision and single GPU
+        - CPU device cannot use distributed training effectively
+        - No automatic detection of available hardware resources
+        - No support for heterogeneous device configurations
+        - Limited validation of actual hardware availability at runtime
+    """
     device: Literal["cpu", "cuda", "mps"] = "cuda"
     precision: Literal["fp32", "fp16", "bf16"] = "fp16"
     distributed: bool = False
@@ -559,6 +779,45 @@ class HardwareConfig(BaseModel):
     @field_validator('precision')
     @classmethod
     def validate_precision(cls, v, info):
+        """
+        Validates numerical precision compatibility with the selected device type.
+        
+        This validator ensures that the precision setting is compatible with the hardware
+        device selection, enforcing platform-specific constraints such as the fp32-only
+        limitation of Apple's Metal Performance Shaders (MPS). It prevents configuration
+        of unsupported precision modes that would cause runtime errors during training.
+        
+        Architecture:
+            - Implements a Pydantic field validator pattern with cross-field validation
+            - Uses conditional logic to enforce device-specific precision constraints
+            - Maintains O(1) time complexity with direct field access and comparison
+            - Preserves the input precision value when valid for the selected device
+        
+        Parameters:
+            cls (Type[HardwareConfig]): The HardwareConfig class
+            v (Literal["fp32", "fp16", "bf16"]): The precision value to validate
+            info (ValidationInfo): Validation context containing the parent data
+                                   with the 'device' field
+        
+        Returns:
+            Literal["fp32", "fp16", "bf16"]: The validated precision value (unchanged if valid)
+        
+        Raises:
+            ValueError: When an incompatible precision is specified for the selected device
+                - When 'mps' device is selected with any precision other than 'fp32'
+        
+        Integration:
+            - Called automatically by Pydantic during HardwareConfig instantiation
+            - Enables early validation before PyTorch device initialization
+            - Works with other hardware validators to ensure consistent configuration
+            - Prevents runtime errors from incompatible precision/device combinations
+        
+        Limitations:
+            - Only enforces MPS-specific constraints, not CUDA or CPU limitations
+            - No validation for hardware-specific bf16 support which varies by GPU generation
+            - Does not check for actual hardware availability at runtime
+            - Cannot detect driver or CUDA version compatibility issues
+        """
         device = info.data.get('device')
         if device == 'mps' and v != 'fp32':
             raise ValueError("MPS device only supports fp32 precision")
@@ -567,6 +826,46 @@ class HardwareConfig(BaseModel):
     @field_validator('distributed')
     @classmethod
     def validate_distributed(cls, v, info):
+        """
+        Validates distributed training compatibility with the selected device type.
+        
+        This validator ensures that the distributed training setting is compatible with the hardware
+        device selection, enforcing platform-specific constraints such as the lack of distributed
+        training support in Apple's Metal Performance Shaders (MPS) and discouraging distributed
+        training on CPU devices which is typically inefficient.
+        
+        Architecture:
+            - Implements a Pydantic field validator pattern with cross-field validation
+            - Uses conditional logic to enforce device-specific distributed training constraints
+            - Maintains O(1) time complexity with direct field access and comparison
+            - Preserves the input distributed value when valid for the selected device
+        
+        Parameters:
+            cls (Type[HardwareConfig]): The HardwareConfig class
+            v (bool): The distributed training flag value to validate
+            info (ValidationInfo): Validation context containing the parent data
+                                   with the 'device' field
+        
+        Returns:
+            bool: The validated distributed flag value (unchanged if valid)
+        
+        Raises:
+            ValueError: When distributed training is incompatible with the selected device
+                - When 'mps' device is selected with distributed=True
+                - When 'cpu' device is selected with distributed=True
+        
+        Integration:
+            - Called automatically by Pydantic during HardwareConfig instantiation
+            - Enables early validation before PyTorch distributed initialization
+            - Works with other hardware validators to ensure consistent configuration
+            - Prevents runtime errors from incompatible distributed/device combinations
+        
+        Limitations:
+            - Only enforces basic device compatibility, not detailed distributed requirements
+            - No validation for actual distributed environment availability
+            - Cannot detect network configuration issues for distributed training
+            - Does not validate distributed backend compatibility (NCCL, Gloo, etc.)
+        """
         device = info.data.get('device')
         if device == 'mps' and v:
             raise ValueError("MPS device does not support distributed training")
@@ -577,6 +876,48 @@ class HardwareConfig(BaseModel):
     @field_validator('num_gpus')
     @classmethod
     def validate_num_gpus(cls, v, info):
+        """
+        Validates GPU count compatibility with the selected device type.
+        
+        This validator ensures that the number of GPUs specified is compatible with the hardware
+        device selection, enforcing platform-specific constraints such as the single-GPU limitation
+        of Apple's Metal Performance Shaders (MPS), zero GPUs for CPU devices, and at least one
+        GPU for CUDA devices. It prevents configuration of invalid GPU counts that would cause
+        runtime errors or resource allocation issues during training.
+        
+        Architecture:
+            - Implements a Pydantic field validator pattern with cross-field validation
+            - Uses conditional logic to enforce device-specific GPU count constraints
+            - Maintains O(1) time complexity with direct field access and comparison
+            - Preserves the input GPU count when valid for the selected device
+        
+        Parameters:
+            cls (Type[HardwareConfig]): The HardwareConfig class
+            v (int): The number of GPUs to validate
+            info (ValidationInfo): Validation context containing the parent data
+                                   with the 'device' field
+        
+        Returns:
+            int: The validated GPU count (unchanged if valid)
+        
+        Raises:
+            ValueError: When an incompatible GPU count is specified for the selected device
+                - When 'mps' device is selected with num_gpus > 1
+                - When 'cpu' device is selected with num_gpus > 0
+                - When 'cuda' device is selected with num_gpus < 1
+        
+        Integration:
+            - Called automatically by Pydantic during HardwareConfig instantiation
+            - Enables early validation before PyTorch device initialization
+            - Works with other hardware validators to ensure consistent configuration
+            - Prevents runtime errors from incompatible device/GPU count combinations
+        
+        Limitations:
+            - No validation for actual hardware availability at runtime
+            - Cannot detect if the requested number of CUDA GPUs exceeds available hardware
+            - Does not validate GPU memory requirements for the model architecture
+            - No support for heterogeneous GPU configurations or specific device selection
+        """
         device = info.data.get('device')
         if device == 'mps' and v > 1:
             raise ValueError("MPS device only supports a single GPU")
@@ -587,10 +928,113 @@ class HardwareConfig(BaseModel):
         return v
 
 class TrainConfig(BaseModel):
+    """
+    Configuration for training loop parameters in audio-to-biosignal modeling.
+    
+    TrainConfig encapsulates the core training loop parameters that control convergence
+    behavior, computational efficiency, and resource utilization during model training.
+    It provides a minimal but essential set of parameters that directly influence the
+    training dynamics and termination conditions.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Maintains separation of concerns from optimizer and hardware configurations
+        - Provides sensible defaults for general deep learning scenarios
+        - Supports integration with Hugging Face Trainer and PyTorch training loops
+    
+    Attributes:
+        max_epochs (int): Maximum number of complete passes through the training dataset (default: 100)
+        accumulate_grad_batches (int): Number of batches to accumulate gradients before optimizer step (default: 1)
+            - Values > 1 enable effective batch size increase without memory overhead
+            - Useful for simulating larger batch sizes on memory-constrained hardware
+    
+    Integration:
+        - Used by training scripts to configure training loop termination
+        - Consumed by Hugging Face TrainingArguments for gradient accumulation
+        - Complements OptimizerConfig by separating training loop from optimization parameters
+        - Works with MetricsConfig to coordinate validation frequency and early stopping
+    
+    Example:
+        ```python
+        # Standard configuration with default parameters
+        train_config = TrainConfig()
+        
+        # Configuration for longer training with gradient accumulation
+        train_config = TrainConfig(
+            max_epochs=200,
+            accumulate_grad_batches=4  # Effective batch size = batch_size * 4
+        )
+        
+        # Use with TrainingArguments
+        training_args = TrainingArguments(
+            num_train_epochs=train_config.max_epochs,
+            gradient_accumulation_steps=train_config.accumulate_grad_batches,
+            # ... other arguments
+        )
+        ```
+    
+    Limitations:
+        - Limited to fixed epoch-based training (no step-based termination)
+        - No support for dynamic or scheduled gradient accumulation
+        - No explicit learning rate scaling for accumulated gradients
+        - Requires coordination with batch size in DataConfig for effective batch size calculation
+    """
     max_epochs: int = 100
     accumulate_grad_batches: int = 1
 
 class RunConfig(BaseModel):
+    """
+    Unified configuration container for audio-to-biosignal modeling experiments.
+    
+    RunConfig serves as the central integration point for all configuration components,
+    providing a comprehensive specification for reproducible machine learning experiments.
+    It encapsulates the complete experiment definition from model architecture to hardware
+    utilization, enabling consistent configuration serialization and experiment tracking.
+    
+    Architecture:
+        - Implements a hierarchical configuration pattern using Pydantic BaseModel
+        - Composes specialized configuration components into a unified experiment definition
+        - Enables YAML-based configuration with automatic validation and type checking
+        - Maintains separation of concerns through modular configuration components
+        - Supports serialization/deserialization for experiment reproducibility
+    
+    Attributes:
+        experiment_name (str): Unique identifier for the experiment
+        seed (int): Global random seed for reproducibility (default: 42)
+        
+        model (ModelConfig): Neural network architecture and hyperparameters
+        optimizer (OptimizerConfig): Optimization algorithm and learning rate schedule
+        data (DataConfig): Dataset selection and data loading parameters
+        loss (LossConfig): Loss function specification
+        hardware (HardwareConfig): Computational resources and precision settings
+        logging (LoggingConfig): Experiment tracking and visualization parameters
+        checkpoint (CheckpointConfig): Model persistence and selection strategy
+        train (TrainConfig): Training loop parameters and termination conditions (default: TrainConfig())
+    
+    Integration:
+        - Used by training scripts as the single entry point for experiment configuration
+        - Loaded from YAML configuration files in deployment pipelines
+        - Passed to the train() function to execute the complete training workflow
+        - Enables experiment reproducibility through consistent random seed initialization
+        - Supports configuration inheritance and composition through YAML anchors
+    
+    Example:
+        ```python
+        # Load configuration from YAML file
+        with open('configs/experiment.yaml', 'r') as f:
+            config_dict = yaml.safe_load(f)
+        run_config = RunConfig(**config_dict)
+        
+        # Execute training with the configuration
+        best_checkpoint_path = train(run_config)
+        ```
+    
+    Limitations:
+        - No validation for cross-component parameter consistency
+        - No automatic hardware resource detection or configuration adjustment
+        - Requires manual coordination of feature dimensions across components
+        - Limited to predefined model architectures and optimization strategies
+    """
     experiment_name: str
     seed: int = 42
 

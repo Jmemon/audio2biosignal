@@ -16,6 +16,72 @@ from src.models.wavenet import Wavenet
 from src.metrics import MetricsCalculator
 
 def train(cfg: RunConfig) -> Path:
+    """
+    Executes the complete training pipeline for audio-to-EDA models with comprehensive monitoring and checkpointing.
+    
+    This function orchestrates the end-to-end training process, including model initialization,
+    optimization, validation, early stopping, and checkpoint management. It implements a multi-dataset
+    training strategy with configurable metrics tracking and hardware acceleration support.
+    
+    Architecture:
+        - Implements a modular training loop with O(epochs * batches) time complexity
+        - Supports mixed precision training with automatic gradient scaling
+        - Maintains model state through configurable checkpointing strategy
+        - Integrates with W&B for experiment tracking with O(log_interval) logging frequency
+        - Implements early stopping with patience-based termination
+    
+    Parameters:
+        cfg (RunConfig): Comprehensive configuration object containing nested configurations for:
+            - experiment_name (str): Unique identifier for the training run (required)
+            - model (ModelConfig): Model architecture and parameters (must specify "tcn" or "wavenet")
+            - optimizer (OptimizerConfig): Optimization algorithm and learning rate schedule
+            - data (DataConfig): Dataset selection and dataloader parameters
+            - loss (LossConfig): Loss function specification
+            - hardware (HardwareConfig): Device and precision settings (must be "cpu", "cuda", or "mps")
+            - logging (LoggingConfig): W&B integration parameters
+            - checkpoint (CheckpointConfig): Model persistence strategy (must specify checkpoint_dir)
+            - metrics (MetricsConfig): Evaluation metrics and validation frequency
+            - train (TrainConfig): Training loop parameters (epochs, gradient accumulation)
+    
+    Returns:
+        Path: Filesystem path to the best checkpoint file, or the last checkpoint if no best was saved.
+            Returns None if no checkpoints were saved during training.
+    
+    Raises:
+        ValueError: If required configuration fields are missing or invalid:
+            - When experiment_name is not specified
+            - When model.architecture is not "tcn" or "wavenet"
+            - When checkpoint.checkpoint_dir is not specified
+            - When hardware.device is not "cpu", "cuda", or "mps"
+            - When no training or validation datasets are available
+    
+    Behavior:
+        - Sets random seed from cfg.seed for reproducibility
+        - Initializes W&B logging if cfg.logging.wandb_project is specified
+        - Moves model to specified device (CPU/CUDA/MPS)
+        - Enables mixed precision training when using fp16 precision on CUDA
+        - Performs gradient clipping when cfg.optimizer.gradient_clip_val > 0
+        - Validates at intervals specified by cfg.metrics.val_check_interval
+        - Saves checkpoints based on monitored metric (min/max mode)
+        - Implements early stopping when enabled in cfg.metrics
+        - Saves final model state when cfg.checkpoint.save_last is True
+    
+    Integration:
+        - Called by training scripts with a fully populated RunConfig
+        - Consumes datasets via DataLoaderBuilder with AudioEDAFeatureConfig
+        - Instantiates models via architecture-specific constructors (TCN/Wavenet)
+        - Integrates with OptimizerBuilder for optimization strategy
+        - Uses LossBuilder for criterion construction
+        - Leverages MetricsCalculator for performance evaluation
+    
+    Limitations:
+        - Currently supports only TCN and Wavenet architectures
+        - Mixed precision (fp16) only available with CUDA devices
+        - Requires both training and validation datasets
+        - Checkpoint paths are determined by experiment_name
+        - Memory usage scales with batch size and model size
+        - No distributed training support
+    """
     # (a) Validate critical fields
     if not cfg.experiment_name:
         raise ValueError("experiment_name must be specified in RunConfig")

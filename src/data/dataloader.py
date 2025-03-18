@@ -18,6 +18,59 @@ if multiprocessing.get_start_method() != 'spawn':
 class DataLoaderBuilder:
     @staticmethod
     def build(data_config: DataConfig, feature_config: AudioEDAFeatureConfig, split: str) -> List[DataLoader]:
+        """
+        Constructs PyTorch DataLoaders for specified datasets with appropriate train/val/test splits.
+        
+        This factory method instantiates dataset objects, applies consistent dataset splitting,
+        and configures DataLoaders with platform-aware multiprocessing settings to ensure
+        compatibility across operating systems.
+        
+        Architecture:
+            - Implements a factory pattern with O(n) complexity where n is the number of datasets
+            - Uses fixed 80/10/10 train/val/test split ratios for all datasets
+            - Handles multiprocessing context configuration with fallback to single-process loading
+            - Maintains dataset-specific collate functions for proper batch construction
+        
+        Parameters:
+            data_config (DataConfig): Configuration containing:
+                - train_datasets/val_datasets/test_datasets: Lists of DatasetType enums
+                - num_workers: Number of worker processes (0 disables multiprocessing)
+                - prefetch_size: Number of batches to prefetch in background
+            
+            feature_config (AudioEDAFeatureConfig): Configuration for audio/EDA preprocessing
+                - Controls sample rates, window sizes, and feature extraction parameters
+                - Passed directly to dataset constructors
+            
+            split (str): Dataset split to return, must be one of:
+                - 'train': Training dataset subset (first 80% of data)
+                - 'val': Validation dataset subset (next 10% of data)
+                - 'test': Test dataset subset (final 10% of data)
+        
+        Returns:
+            List[DataLoader]: List of configured PyTorch DataLoaders, one per requested dataset
+                - Empty list if no datasets are specified for the requested split
+                - Each DataLoader uses fixed batch size of 32
+        
+        Behavior:
+            - Automatically detects and handles multiprocessing compatibility issues
+            - Falls back to single-process loading if 'spawn' method cannot be set
+            - Uses dataset-specific collate functions for proper batch construction
+            - Maintains fixed batch size of 32 regardless of dataset
+        
+        Integration:
+            - Used in training pipelines to construct appropriate DataLoaders:
+              ```
+              train_loaders = DataLoaderBuilder.build(config.data, feature_config, 'train')
+              ```
+            - Requires dataset classes to implement __len__ for splitting calculations
+            - Expects dataset_mapping to contain all datasets referenced in data_config
+        
+        Limitations:
+            - Fixed 80/10/10 split ratios not configurable per dataset
+            - Hard-coded batch size of 32 not configurable through parameters
+            - Limited to two dataset types (HKU956, PMEmo2019)
+            - No support for custom dataset splitting strategies (e.g., stratified)
+        """
         dataset_mapping = {
             'hku956': (HKU956Dataset, hku_collate_fn, HKU956Config()),
             'pmemo2019': (PMEmo2019Dataset, pmemo_collate_fn, PMEmo2019Config()),
