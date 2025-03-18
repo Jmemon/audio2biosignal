@@ -85,6 +85,7 @@ def main():
                     print(f"Using cached duration for song {song_id}: {duration:.2f}s")
                 else:
                     # Download the audio file to get its duration
+                    temp_audio_file = None
                     try:
                         with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
                             urllib.request.urlretrieve(audio_path, temp_audio_file.name)
@@ -92,15 +93,16 @@ def main():
                             waveform, sample_rate = torchaudio.load(temp_audio_file.name)
                             duration = waveform.shape[1] / sample_rate  # Duration in seconds
                             
-                            # Clean up the temporary audio file
-                            os.unlink(temp_audio_file.name)
-                            
                             # Cache the duration for future use
                             song_duration_cache[song_id] = duration
                             print(f"Downloaded and cached duration for song {song_id}: {duration:.2f}s")
                     except Exception as e:
                         print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
                         return None
+                    finally:
+                        # Clean up the temporary audio file
+                        if temp_audio_file and os.path.exists(temp_audio_file.name):
+                            os.unlink(temp_audio_file.name)
                 
                 result = {
                     'subject': participant_id,
