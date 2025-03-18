@@ -34,6 +34,9 @@ def main():
     s3_manager = S3FileManager()
     s3_client = s3_manager._get_s3_client()
     
+    # Dictionary to cache song durations to avoid redundant downloads
+    song_duration_cache = {}
+    
     # Load AV ratings to get participant_id, song_id, and song_no
     print("Loading AV ratings data...")
     av_ratings_path = "s3://audio2biosignal-train-data/HKU956/3. AV_ratings.csv"
@@ -132,7 +135,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         # Submit all tasks
         future_to_task = {
-            executor.submit(process_participant_song, participant_id, song_id, song_no, audio_path, s3_manager): 
+            executor.submit(process_participant_song, participant_id, song_id, song_no, audio_path, s3_manager, song_duration_cache): 
             (participant_id, song_id) 
             for participant_id, song_id, song_no, audio_path in tasks
         }
