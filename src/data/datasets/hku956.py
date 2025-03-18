@@ -203,11 +203,9 @@ class HKU956Dataset(Dataset):
                 duration = metadata_row['duration'].values[0]
                 sample_rate = int(len(eda_signal) / duration)
             else:
-                # Default sample rate if metadata not found
-                sample_rate = 100  # Assuming 100Hz as default
+                raise ValueError(f"Song ID {song_id} not found in metadata")
         else:
-            # Default sample rate if song_id not found in path
-            sample_rate = 100  # Assuming 100Hz as default
+            raise ValueError(f"Could not extract song_id from EDA file path: {eda_file_path}")
         
         # Process the EDA tensor with the calculated sample rate
         eda_tensor = preprocess_eda(eda_signal, sample_rate, self.feature_config)
