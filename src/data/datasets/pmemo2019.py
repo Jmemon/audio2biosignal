@@ -14,25 +14,26 @@ def collate_fn(batch):
     
     This function handles the conversion of individual dataset samples into properly formatted
     batches, ensuring all tensors have consistent dimensions by right-aligned padding with zeros.
-    It supports both 2D audio tensors (features, length) and 3D audio tensors (channels, features, length).
+    It handles audio tensors with shape [channels, num_mfccs, time_steps] and EDA tensors with
+    shape [channels, time_steps].
     
     Architecture:
         - Determines maximum sequence length across all samples in the batch
         - Creates zero-padded tensors of uniform size for both audio and EDA data
         - Preserves original data by right-aligning within padded tensors
-        - Handles dimensional variance in audio tensors (with or without channel dimension)
+        - Maintains the semantic meaning of dimensions for both audio and EDA
         - Time complexity: O(n) where n is the batch size
     
     Parameters:
         batch: List[Tuple[torch.Tensor, torch.Tensor]]
             List of (audio_tensor, eda_tensor) pairs where:
-            - audio_tensor: Either shape [features, length] or [channels, features, length]
-            - eda_tensor: Shape [length]
+            - audio_tensor: Shape [channels, num_mfccs, time_steps]
+            - eda_tensor: Shape [channels, time_steps]
             
     Returns:
         Tuple[torch.Tensor, torch.Tensor]:
-            - padded_audio: Tensor of shape [batch_size, channels, features, max_length]
-            - padded_eda: Tensor of shape [batch_size, max_length]
+            - padded_audio: Tensor of shape [batch_size, channels, num_mfccs, max_time_steps]
+            - padded_eda: Tensor of shape [batch_size, channels, max_time_steps]
             
     Raises:
         IndexError: If batch is empty
@@ -44,31 +45,26 @@ def collate_fn(batch):
         - Zero-padding is applied to the left side of sequences
     """
     audio_tensors, eda_tensors = zip(*batch)
-    max_length = max(tensor.size(-1) for tensor in audio_tensors)
-    audio_features = audio_tensors[0].size(0)
+    max_time_steps = max(tensor.size(-1) for tensor in audio_tensors)
     
-    # Determine number of channels from the audio tensors
-    # If audio is already in shape [features, length], we're adding a channel dimension
-    num_channels = 1
-    if len(audio_tensors[0].shape) > 2:
-        num_channels = audio_tensors[0].size(0)
-        audio_features = audio_tensors[0].size(1)
-
-    padded_audio = torch.zeros(len(batch), num_channels, audio_features, max_length)
-    padded_eda = torch.zeros(len(batch), max_length)
+    # Extract dimensions from the first audio tensor
+    audio_channels = audio_tensors[0].size(0)
+    num_mfccs = audio_tensors[0].size(1)
+    
+    # Extract dimensions from the first EDA tensor
+    eda_channels = eda_tensors[0].size(0)
+    
+    # Initialize padded tensors with the correct dimensions
+    padded_audio = torch.zeros(len(batch), audio_channels, num_mfccs, max_time_steps)
+    padded_eda = torch.zeros(len(batch), eda_channels, max_time_steps)
 
     for i, (audio, eda) in enumerate(batch):
-        audio_length = audio.size(-1)
-        eda_length = eda.size(-1)
+        audio_time_steps = audio.size(-1)
+        eda_time_steps = eda.size(-1)
         
-        if len(audio.shape) > 2:
-            # If audio already has channel dimension
-            padded_audio[i, :, :, -audio_length:] = audio
-        else:
-            # If audio is in shape [features, length]
-            padded_audio[i, 0, :, -audio_length:] = audio
-            
-        padded_eda[i, -eda_length:] = eda
+        # Right-align the audio and EDA data in the padded tensors
+        padded_audio[i, :, :, -audio_time_steps:] = audio
+        padded_eda[i, :, -eda_time_steps:] = eda
 
     return padded_audio, padded_eda
 
@@ -282,8 +278,8 @@ class PMEmo2019Dataset(Dataset):
                 
         Returns:
             tuple[torch.Tensor, torch.Tensor]:
-                - audio_tensor: Preprocessed audio features with shape determined by feature_config
-                - eda_tensor: Preprocessed EDA signal with shape determined by feature_config
+                - audio_tensor: Preprocessed audio features with shape [channels, num_mfccs, time_steps]
+                - eda_tensor: Preprocessed EDA signal with shape [channels, time_steps]
                 
         Raises:
             IndexError: If index is out of bounds (< 0 or >= len(self))
