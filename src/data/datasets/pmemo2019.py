@@ -245,7 +245,7 @@ class PMEmo2019Dataset(Dataset):
         # Convert series to tensor before preprocessing
         eda_signal = torch.tensor(eda_series.values, dtype=torch.float32)
         # Process the EDA tensor
-        eda_tensor = preprocess_eda(eda_signal, self.feature_config)
+        eda_tensor = preprocess_eda(eda_signal, sample_rate, self.feature_config)
         return eda_tensor
 
     def __len__(self) -> int:
