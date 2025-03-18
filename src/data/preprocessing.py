@@ -5,6 +5,7 @@ import torchaudio.transforms as T
 import numpy as np
 from pydantic import BaseModel
 from typing import Tuple
+from src.configs import AudioEDAFeatureConfig
 
 def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
     """
