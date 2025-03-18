@@ -7,6 +7,55 @@ class DatasetType(Enum):
     PMEmo2019 = 'pmemo2019'
 
 class DatasetConfig(BaseModel):
+    """
+    Base configuration class for dataset management in multimodal biosignal processing.
+    
+    Provides a standardized interface for dataset access, defining the structure,
+    location, and processing parameters for multimodal datasets (primarily audio and EDA).
+    Serves as the foundation for dataset-specific configurations through inheritance.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Supports S3-based remote storage with path resolution
+        - Enables consistent dataset splitting for reproducible machine learning experiments
+    
+    Attributes:
+        dataset_name (str): Unique identifier for the dataset
+        dataset_root_path (str): Base path to dataset storage (local or S3 URI)
+        modalities (List[str]): Available data modalities (e.g., ["eda", "audio"])
+        file_format (Dict[str, str]): File extensions for each modality (e.g., {"audio": ".mp3"})
+        data_directories (Dict[str, str]): Storage paths for each modality's data
+        metadata_paths (List[str]): Paths to metadata files containing annotations or mappings
+        split_ratios (List[float]): Train/validation/test split proportions (should sum to 1.0)
+        seed (int): Random seed for reproducible dataset splitting
+    
+    Integration:
+        - Used by DataLoaderBuilder to construct PyTorch DataLoader instances
+        - Consumed by dataset classes (e.g., HKU956Dataset, PMEmo2019Dataset)
+        - Extended by dataset-specific configurations (HKU956Config, PMEmo2019Config)
+    
+    Example:
+        ```python
+        config = DatasetConfig(
+            dataset_name="CustomDataset",
+            dataset_root_path="s3://my-bucket/datasets/custom/",
+            modalities=["audio", "eda"],
+            file_format={"audio": ".wav", "eda": ".csv"},
+            data_directories={
+                "audio": "s3://my-bucket/datasets/custom/audio/",
+                "eda": "s3://my-bucket/datasets/custom/biosignals/"
+            },
+            metadata_paths=["s3://my-bucket/datasets/custom/metadata.csv"],
+            split_ratios=[0.8, 0.1, 0.1],
+            seed=42
+        )
+        ```
+    
+    Limitations:
+        - No validation for consistency between modalities and file_format/data_directories
+        - No validation that split_ratios sum to 1.0
+        - S3 paths require appropriate AWS credentials in the environment
+    """
     dataset_name: str
     dataset_root_path: str
     modalities: List[str]
@@ -33,6 +82,45 @@ class HKU956Config(DatasetConfig):
     seed: int = 42
 
 class PMEmo2019Config(DatasetConfig):
+    """
+    Configuration for the PMEmo2019 dataset, providing standardized access to music-evoked physiological signals.
+    
+    PMEmo2019Config encapsulates the structure and location of the PMEmo2019 dataset, which contains
+    synchronized audio and electrodermal activity (EDA) recordings from multiple subjects listening to
+    music excerpts. It defines S3 paths, file formats, and dataset organization to enable reproducible
+    experiments with this multimodal dataset.
+    
+    Architecture:
+        - Inherits from DatasetConfig, implementing a concrete configuration for PMEmo2019
+        - Maintains fixed S3 paths to standardize access across experiments
+        - Structures data access by modality (audio/EDA) with predefined directory mappings
+        - Supports 80/10/10 train/validation/test splitting with fixed random seed
+    
+    Integration:
+        - Used by PMEmo2019Dataset to locate and load dataset files from S3
+        - Consumed by DataLoaderBuilder to construct PyTorch DataLoader instances
+        - Provides metadata path for subject-music-EDA mappings required by the dataset
+        - Compatible with AudioEDAFeatureConfig for signal preprocessing parameters
+    
+    Example:
+        ```python
+        # Standard usage with default parameters
+        config = PMEmo2019Config()
+        dataset = PMEmo2019Dataset(config, feature_config)
+        
+        # Custom configuration with modified split ratios
+        custom_config = PMEmo2019Config(
+            split_ratios=[0.7, 0.15, 0.15],
+            seed=100
+        )
+        ```
+    
+    Limitations:
+        - Fixed to specific S3 bucket structure (audio2biosignal-train-data)
+        - Assumes chorus excerpts for audio files rather than full songs
+        - Requires metadata.csv file in the expected S3 location
+        - No validation for S3 path accessibility or file existence
+    """
     dataset_name: str = "PMEmo2019"
     dataset_root_path: str = "s3://audio2biosignal-train-data/PMEmo2019/"
     modalities: List[str] = ["eda", "audio"]
