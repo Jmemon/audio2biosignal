@@ -17,6 +17,8 @@ import urllib.request
 import concurrent.futures
 from typing import Dict, List
 import time
+import threading
+import gc
 
 # Add the project root to the Python path to ensure src module is accessible
 project_root = Path(__file__).resolve().parent.parent
@@ -140,16 +142,19 @@ def main():
             if audio_path:
                 tasks.append((participant_id, song_id, song_no, audio_path))
     
+    # Create a lock for thread-safe access to the song_duration_cache
+    song_duration_lock = threading.Lock()
+    
     # Process tasks in parallel
     metadata_rows = []
     start_time = time.time()
     print(f"Processing {len(tasks)} tasks with multithreading...")
     
-    # Use ThreadPoolExecutor to process tasks in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    # Use ThreadPoolExecutor to process tasks in parallel with reduced workers
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Submit all tasks
         future_to_task = {
-            executor.submit(process_participant_song, participant_id, song_id, song_no, audio_path, s3_manager, song_duration_cache): 
+            executor.submit(process_participant_song, participant_id, song_id, song_no, audio_path, song_duration_cache, song_duration_lock): 
             (participant_id, song_id) 
             for participant_id, song_id, song_no, audio_path in tasks
         }
@@ -163,6 +168,10 @@ def main():
                     metadata_rows.append(result)
             except Exception as e:
                 print(f"Error processing participant {participant_id}, song {song_id}: {e}")
+            
+            # Explicitly run garbage collection periodically
+            if len(metadata_rows) % 10 == 0:
+                gc.collect()
     
     elapsed_time = time.time() - start_time
     print(f"Multithreaded processing completed in {elapsed_time:.2f} seconds")
@@ -176,6 +185,9 @@ def main():
         writer.writeheader()
         writer.writerows(metadata_rows)
         temp_file_path = temp_file.name
+    
+    # Run garbage collection before uploading
+    gc.collect()
     
     # Upload the file to S3
     print("Uploading to S3...")
