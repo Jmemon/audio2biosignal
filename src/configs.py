@@ -287,6 +287,7 @@ class AudioEDAFeatureConfig(BaseModel):
     audio_hop_length: int = 160   # STFT hop length
 
     # EDA configurations
+    eda_original_sample_rate: int = 50
     eda_window_size: int = 400
     eda_hop_length: int = 160
     eda_normalize: bool = True
