@@ -14,6 +14,9 @@ import os
 import sys
 import torchaudio
 import urllib.request
+import concurrent.futures
+from typing import Dict, List
+import time
 
 # Add the project root to the Python path to ensure src module is accessible
 project_root = Path(__file__).resolve().parent.parent
@@ -46,11 +49,64 @@ def main():
     # Create a dictionary to map song_id to audio link
     song_id_to_audio = dict(zip(audio_metadata_df['song_id'], audio_metadata_df['link']))
     
-    # Dictionary to store metadata rows
-    metadata_rows = []
+    def process_participant_song(participant_id: str, song_id: str, song_no: str, 
+                                audio_path: str, s3_manager: S3FileManager) -> Dict:
+        """
+        Process a single participant-song combination.
+        
+        Args:
+            participant_id: The participant ID
+            song_id: The song ID
+            song_no: The song number
+            audio_path: Path to the audio file
+            s3_manager: S3FileManager instance
+            
+        Returns:
+            Dictionary with metadata or None if processing failed
+        """
+        # Construct EDA file path
+        eda_file_name = f"{song_no}_{song_id}.csv"
+        eda_s3_path = f"s3://audio2biosignal-train-data/HKU956/1. physiological_signals/{participant_id}/EDA/{eda_file_name}"
+        
+        try:
+            # Check if EDA file exists
+            bucket, key = s3_manager._parse_s3_path(eda_s3_path)
+            s3_client = s3_manager._get_s3_client()
+            s3_client.head_object(Bucket=bucket, Key=key)
+            
+            if audio_path:
+                # Download the audio file to get its duration
+                try:
+                    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
+                        urllib.request.urlretrieve(audio_path, temp_audio_file.name)
+                        # Load the audio file to get its sample rate and duration
+                        waveform, sample_rate = torchaudio.load(temp_audio_file.name)
+                        duration = waveform.shape[1] / sample_rate  # Duration in seconds
+                        
+                        # Clean up the temporary audio file
+                        os.unlink(temp_audio_file.name)
+                        
+                        result = {
+                            'subject': participant_id,
+                            'song_id': song_id,
+                            'audio_path': audio_path,
+                            'eda_path': eda_s3_path,
+                            'duration': duration
+                        }
+                        print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
+                        return result
+                except Exception as e:
+                    print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
+        except Exception as e:
+            print(f"Warning: EDA file not found for participant {participant_id}, song {song_id}: {e}")
+        
+        return None
+    
+    # Create a list of tasks to process
+    tasks = []
     
     # Process each participant and song combination
-    print("Processing participant and song combinations...")
+    print("Preparing participant and song combinations...")
     
     # Get unique participant IDs and song IDs
     unique_participants = av_ratings_df['participant_id'].unique()
@@ -62,45 +118,38 @@ def main():
         for _, row in participant_data.iterrows():
             song_id = row['song_id']
             song_no = row['song_no']
+            audio_path = song_id_to_audio.get(song_id)
             
-            # Construct EDA file path
-            eda_file_name = f"{song_no}_{song_id}.csv"
-            eda_s3_path = f"s3://audio2biosignal-train-data/HKU956/1. physiological_signals/{participant_id}/EDA/{eda_file_name}"
-            
-            # Check if EDA file exists
+            if audio_path:
+                tasks.append((participant_id, song_id, song_no, audio_path))
+    
+    # Process tasks in parallel
+    metadata_rows = []
+    start_time = time.time()
+    print(f"Processing {len(tasks)} tasks with multithreading...")
+    
+    # Use ThreadPoolExecutor to process tasks in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all tasks
+        future_to_task = {
+            executor.submit(process_participant_song, participant_id, song_id, song_no, audio_path, s3_manager): 
+            (participant_id, song_id) 
+            for participant_id, song_id, song_no, audio_path in tasks
+        }
+        
+        # Process results as they complete
+        for future in concurrent.futures.as_completed(future_to_task):
+            participant_id, song_id = future_to_task[future]
             try:
-                bucket, key = s3_manager._parse_s3_path(eda_s3_path)
-                s3_client.head_object(Bucket=bucket, Key=key)
-                
-                # Get audio path from the mapping
-                audio_path = song_id_to_audio.get(song_id)
-                
-                if audio_path:
-                    # Download the audio file to get its duration
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
-                            urllib.request.urlretrieve(audio_path, temp_audio_file.name)
-                            # Load the audio file to get its sample rate and duration
-                            waveform, sample_rate = torchaudio.load(temp_audio_file.name)
-                            duration = waveform.shape[1] / sample_rate  # Duration in seconds
-                            
-                            # Clean up the temporary audio file
-                            os.unlink(temp_audio_file.name)
-                            
-                            # Add to metadata rows with duration
-                            metadata_rows.append({
-                                'subject': participant_id,
-                                'song_id': song_id,
-                                'audio_path': audio_path,
-                                'eda_path': eda_s3_path,
-                                'duration': duration
-                            })
-                            print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
-                    except Exception as e:
-                        print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
+                result = future.result()
+                if result:
+                    metadata_rows.append(result)
             except Exception as e:
-                print(f"Warning: EDA file not found for participant {participant_id}, song {song_id}: {e}")
-                continue
+                print(f"Error processing participant {participant_id}, song {song_id}: {e}")
+    
+    elapsed_time = time.time() - start_time
+    print(f"Multithreaded processing completed in {elapsed_time:.2f} seconds")
+    print(f"Successfully processed {len(metadata_rows)} out of {len(tasks)} tasks")
     
     # Create a temporary CSV file
     print(f"Writing {len(metadata_rows)} rows to CSV...")
