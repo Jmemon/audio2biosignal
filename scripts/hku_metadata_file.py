@@ -53,7 +53,7 @@ def main():
     song_id_to_audio = dict(zip(audio_metadata_df['song_id'], audio_metadata_df['link']))
     
     def process_participant_song(participant_id: str, song_id: str, song_no: str, 
-                                audio_path: str, s3_manager: S3FileManager) -> Dict:
+                                audio_path: str, s3_manager: S3FileManager, song_duration_cache: Dict[str, float]) -> Dict:
         """
         Process a single participant-song combination.
         
@@ -63,6 +63,7 @@ def main():
             song_no: The song number
             audio_path: Path to the audio file
             s3_manager: S3FileManager instance
+            song_duration_cache: Dictionary mapping song_id to duration
             
         Returns:
             Dictionary with metadata or None if processing failed
@@ -78,28 +79,38 @@ def main():
             s3_client.head_object(Bucket=bucket, Key=key)
             
             if audio_path:
-                # Download the audio file to get its duration
-                try:
-                    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
-                        urllib.request.urlretrieve(audio_path, temp_audio_file.name)
-                        # Load the audio file to get its sample rate and duration
-                        waveform, sample_rate = torchaudio.load(temp_audio_file.name)
-                        duration = waveform.shape[1] / sample_rate  # Duration in seconds
-                        
-                        # Clean up the temporary audio file
-                        os.unlink(temp_audio_file.name)
-                        
-                        result = {
-                            'subject': participant_id,
-                            'song_id': song_id,
-                            'audio_path': audio_path,
-                            'eda_path': eda_s3_path,
-                            'duration': duration
-                        }
-                        print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
-                        return result
-                except Exception as e:
-                    print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
+                # Check if we already have the duration for this song_id
+                if song_id in song_duration_cache:
+                    duration = song_duration_cache[song_id]
+                    print(f"Using cached duration for song {song_id}: {duration:.2f}s")
+                else:
+                    # Download the audio file to get its duration
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
+                            urllib.request.urlretrieve(audio_path, temp_audio_file.name)
+                            # Load the audio file to get its sample rate and duration
+                            waveform, sample_rate = torchaudio.load(temp_audio_file.name)
+                            duration = waveform.shape[1] / sample_rate  # Duration in seconds
+                            
+                            # Clean up the temporary audio file
+                            os.unlink(temp_audio_file.name)
+                            
+                            # Cache the duration for future use
+                            song_duration_cache[song_id] = duration
+                            print(f"Downloaded and cached duration for song {song_id}: {duration:.2f}s")
+                    except Exception as e:
+                        print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
+                        return None
+                
+                result = {
+                    'subject': participant_id,
+                    'song_id': song_id,
+                    'audio_path': audio_path,
+                    'eda_path': eda_s3_path,
+                    'duration': duration
+                }
+                print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
+                return result
         except Exception as e:
             print(f"Warning: EDA file not found for participant {participant_id}, song {song_id}: {e}")
         
