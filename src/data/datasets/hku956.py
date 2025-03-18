@@ -112,10 +112,10 @@ class HKU956Dataset(Dataset):
         # Load metadata from custom_metadata.csv which contains all the mappings
         metadata_csv_path = "s3://audio2biosignal-train-data/HKU956/custom_metadata.csv"
         local_metadata_csv = self.s3_manager.download_file(metadata_csv_path)
-        metadata_df = pd.read_csv(local_metadata_csv)
+        self.metadata = pd.read_csv(local_metadata_csv)
         
         # Populate audio and EDA file dictionaries
-        for _, row in metadata_df.iterrows():
+        for _, row in self.metadata.iterrows():
             song_id = str(row['song_id'])
             subject = str(row['subject'])
             audio_s3_path = row['audio_path']
@@ -186,8 +186,31 @@ class HKU956Dataset(Dataset):
         eda_df = pd.read_csv(local_eda_path)
         # Extract the entirety of the first column as the EDA signal
         eda_signal = torch.tensor(eda_df.iloc[:, 0].values, dtype=torch.float32)
-        # Process the EDA tensor
-        eda_tensor = preprocess_eda(eda_signal, self.feature_config)
+        
+        # Extract song_id from eda_file_path
+        # Assuming filename format is <song_no>_<song_id>.csv
+        import os
+        import re
+        filename = os.path.basename(eda_file_path)
+        song_id_match = re.search(r'_(\d+)\.csv', filename)
+        
+        if song_id_match:
+            song_id = int(song_id_match.group(1))
+            # Get the row from metadata with matching song_id
+            metadata_row = self.metadata[self.metadata['song_id'] == song_id]
+            if not metadata_row.empty:
+                # Calculate sample rate from number of samples and duration
+                duration = metadata_row['duration'].values[0]
+                sample_rate = int(len(eda_signal) / duration)
+            else:
+                # Default sample rate if metadata not found
+                sample_rate = 100  # Assuming 100Hz as default
+        else:
+            # Default sample rate if song_id not found in path
+            sample_rate = 100  # Assuming 100Hz as default
+        
+        # Process the EDA tensor with the calculated sample rate
+        eda_tensor = preprocess_eda(eda_signal, sample_rate, self.feature_config)
         return eda_tensor
 
     def __len__(self) -> int:
