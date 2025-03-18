@@ -55,7 +55,7 @@ def main():
     song_id_to_audio = dict(zip(audio_metadata_df['song_id'], audio_metadata_df['link']))
     
     def process_participant_song(participant_id: str, song_id: str, song_no: str, 
-                                audio_path: str, s3_manager: S3FileManager, song_duration_cache: Dict[str, float]) -> Dict:
+                                audio_path: str, song_duration_cache: Dict[str, float], song_duration_lock: threading.Lock) -> Dict:
         """
         Process a single participant-song combination.
         
@@ -64,12 +64,16 @@ def main():
             song_id: The song ID
             song_no: The song number
             audio_path: Path to the audio file
-            s3_manager: S3FileManager instance
             song_duration_cache: Dictionary mapping song_id to duration
+            song_duration_lock: Lock for thread-safe access to the cache
             
         Returns:
             Dictionary with metadata or None if processing failed
         """
+        # Create a new S3FileManager for each thread to avoid sharing
+        s3_manager = S3FileManager()
+        s3_client = s3_manager._get_s3_client()
+        
         # Construct EDA file path
         eda_file_name = f"{song_no}_{song_id}.csv"
         eda_s3_path = f"s3://audio2biosignal-train-data/HKU956/1. physiological_signals/{participant_id}/EDA/{eda_file_name}"
@@ -77,16 +81,20 @@ def main():
         try:
             # Check if EDA file exists
             bucket, key = s3_manager._parse_s3_path(eda_s3_path)
-            s3_client = s3_manager._get_s3_client()
             s3_client.head_object(Bucket=bucket, Key=key)
             
             if audio_path:
                 # Check if we already have the duration for this song_id
                 cache_flag = False
-                if song_id in song_duration_cache:
-                    duration = song_duration_cache[song_id]
-                    cache_flag = True
-                else:
+                duration = None
+                
+                # Use a lock to safely access the shared cache
+                with song_duration_lock:
+                    if song_id in song_duration_cache:
+                        duration = song_duration_cache[song_id]
+                        cache_flag = True
+                
+                if not cache_flag:
                     # Download the audio file to get its duration
                     temp_audio_file = None
                     try:
@@ -96,8 +104,12 @@ def main():
                             waveform, sample_rate = torchaudio.load(temp_audio_file.name)
                             duration = waveform.shape[1] / sample_rate  # Duration in seconds
                             
+                            # Explicitly delete tensors to free memory
+                            del waveform
+                            
                             # Cache the duration for future use
-                            song_duration_cache[song_id] = duration
+                            with song_duration_lock:
+                                song_duration_cache[song_id] = duration
                     except Exception as e:
                         print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
                         return None
