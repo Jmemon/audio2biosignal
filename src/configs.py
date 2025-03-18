@@ -3,6 +3,46 @@ from pydantic import BaseModel, validator, field_validator
 from typing import List, Dict, Optional, Literal, Union, Any
 
 class DatasetType(Enum):
+    """
+    Enumeration of supported datasets for audio-to-biosignal modeling.
+    
+    DatasetType provides a type-safe registry of available datasets, ensuring consistent
+    identification across configuration, data loading, and model training components.
+    Each enum member maps a symbolic name to a string identifier used in configuration files.
+    
+    Architecture:
+        - Implements Python's Enum pattern for type safety and IDE autocompletion
+        - String values match dataset directory names in S3 storage
+        - Hashable for use as dictionary keys in dataset mappings
+    
+    Members:
+        HKU956: The HKU music-evoked physiological dataset with 956 samples
+        PMEmo2019: The PMEmo dataset (2019) with continuous emotion annotations
+    
+    Integration:
+        - Used by DataConfig to specify datasets for training/validation/testing
+        - Consumed by DataLoaderBuilder to instantiate appropriate dataset classes
+        - String values (e.g., 'hku956') used in YAML configuration files
+        - Can be converted from string with DatasetType(str_value)
+    
+    Example:
+        ```python
+        # Type-safe dataset specification
+        config = DataConfig(
+            train_datasets=[DatasetType.HKU956],
+            val_datasets=[DatasetType.PMEmo2019],
+            test_datasets=[DatasetType.HKU956, DatasetType.PMEmo2019]
+        )
+        
+        # String conversion for configuration parsing
+        dataset_type = DatasetType('hku956')  # Returns DatasetType.HKU956
+        ```
+    
+    Limitations:
+        - Adding new datasets requires code changes to this enum
+        - No validation that dataset identifiers exist in storage
+        - No metadata about dataset characteristics (size, modalities, etc.)
+    """
     HKU956 = 'hku956'
     PMEmo2019 = 'pmemo2019'
 
@@ -66,6 +106,45 @@ class DatasetConfig(BaseModel):
     seed: int
 
 class HKU956Config(DatasetConfig):
+    """
+    Configuration for the HKU956 dataset, providing standardized access to music-evoked physiological signals.
+    
+    HKU956Config encapsulates the structure and location of the HKU956 dataset, which contains
+    956 samples of synchronized audio and electrodermal activity (EDA) recordings from subjects
+    listening to music. It defines S3 paths, file formats, and dataset organization to enable
+    reproducible experiments with this multimodal dataset.
+    
+    Architecture:
+        - Inherits from DatasetConfig, implementing a concrete configuration for HKU956
+        - Maintains fixed S3 paths to standardize access across experiments
+        - Structures data access by modality (audio/EDA) with predefined directory mappings
+        - Supports 80/10/10 train/validation/test splitting with fixed random seed
+    
+    Integration:
+        - Used by HKU956Dataset to locate and load dataset files from S3
+        - Consumed by DataLoaderBuilder to construct PyTorch DataLoader instances
+        - Compatible with AudioEDAFeatureConfig for signal preprocessing parameters
+        - Provides empty metadata_paths as HKU956 uses directory structure for organization
+    
+    Example:
+        ```python
+        # Standard usage with default parameters
+        config = HKU956Config()
+        dataset = HKU956Dataset(config, feature_config)
+        
+        # Custom configuration with modified split ratios
+        custom_config = HKU956Config(
+            split_ratios=[0.7, 0.15, 0.15],
+            seed=100
+        )
+        ```
+    
+    Limitations:
+        - Fixed to specific S3 bucket structure (audio2biosignal-train-data)
+        - Audio path points to a CSV file containing audio file references
+        - No validation for S3 path accessibility or file existence
+        - Requires S3FileManager utility for downloading files from S3
+    """
     dataset_name: str = "HKU956"
     dataset_root_path: str = "s3://audio2biosignal-train-data/HKU956/"
     modalities: List[str] = ["eda", "audio"]
@@ -155,6 +234,52 @@ class AudioEDAFeatureConfig(BaseModel):
     filter_highpass: bool = False  # 0.05Hz high-pass filter
 
 class DataConfig(BaseModel):
+    """
+    Configuration for dataset selection and data loading parameters in audio-to-biosignal modeling.
+    
+    DataConfig manages the specification of which datasets to use for each training phase
+    (train/validation/test) and controls the data loading process parameters. It serves as
+    the central configuration point for dataset selection and PyTorch DataLoader behavior.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Uses DatasetType enum for type-safe dataset selection
+        - Supports multi-dataset training with separate dataset lists for each phase
+        - Controls parallelism and memory management for data loading pipeline
+    
+    Attributes:
+        train_datasets (List[DatasetType]): Datasets to use for training
+        val_datasets (List[DatasetType]): Datasets to use for validation
+        test_datasets (List[DatasetType]): Datasets to use for testing
+        batch_size (int): Number of samples per batch (default: 32)
+        num_workers (int): Number of subprocesses for data loading (default: 4)
+        prefetch_size (int): Number of batches to prefetch (default: 2)
+    
+    Integration:
+        - Used by DataLoaderBuilder to construct PyTorch DataLoader instances
+        - Consumed by training scripts to configure dataset selection
+        - Works with dataset-specific configurations (HKU956Config, PMEmo2019Config)
+        - Batch size affects memory usage and gradient accumulation strategy
+    
+    Example:
+        ```python
+        config = DataConfig(
+            train_datasets=[DatasetType.HKU956],
+            val_datasets=[DatasetType.PMEmo2019],
+            test_datasets=[DatasetType.HKU956, DatasetType.PMEmo2019],
+            batch_size=64,
+            num_workers=8,
+            prefetch_size=4
+        )
+        train_loaders = DataLoaderBuilder.build(config, feature_config, 'train')
+        ```
+    
+    Limitations:
+        - No validation for dataset existence or compatibility
+        - No automatic adjustment of num_workers based on available CPU cores
+        - No memory usage estimation based on batch_size
+        - Requires DatasetType enum to be updated when adding new datasets
+    """
     train_datasets: List[DatasetType]
     val_datasets: List[DatasetType]
     test_datasets: List[DatasetType]
@@ -163,6 +288,67 @@ class DataConfig(BaseModel):
     prefetch_size: int = 2
 
 class OptimizerConfig(BaseModel):
+    """
+    Configuration for optimizer selection and hyperparameters in audio-to-biosignal modeling.
+    
+    OptimizerConfig encapsulates the complete specification of optimization algorithms,
+    learning rate schedules, and gradient handling for neural network training. It provides
+    a unified interface for configuring the optimization process with sensible defaults
+    while allowing fine-grained control over training dynamics.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Supports multiple optimizer types with algorithm-specific parameters
+        - Integrates learning rate scheduling and gradient clipping in a unified interface
+        - Maintains type safety through Literal types for constrained parameter choices
+    
+    Attributes:
+        name (Literal["adam", "adamw", "sgd"]): Optimizer algorithm selection (default: "adamw")
+        learning_rate (float): Initial learning rate for optimization (default: 1e-4)
+        weight_decay (float): L2 regularization strength (default: 0.01)
+        beta1 (float): Exponential decay rate for first moment estimates in Adam/AdamW (default: 0.9)
+        beta2 (float): Exponential decay rate for second moment estimates in Adam/AdamW (default: 0.999)
+        momentum (float): Momentum factor for SGD optimizer (default: 0.0, only used with SGD)
+        warmup_steps (int): Number of steps for learning rate warmup (default: 0)
+        warmup_ratio (float): Proportion of training steps for learning rate warmup (default: 0.0)
+        scheduler (Optional[Literal["cosine", "linear", "constant", "reduce_on_plateau"]]): 
+            Learning rate scheduler type (default: "cosine")
+        gradient_clip_val (float): Maximum allowed gradient norm for gradient clipping (default: 1.0)
+    
+    Integration:
+        - Used by OptimizerBuilder to construct PyTorch optimizer and scheduler instances
+        - Consumed by training scripts to configure optimization strategy
+        - Supports different parameter sets for different optimizer types (Adam/AdamW/SGD)
+        - Gradient clipping value directly configures gradient norm constraints
+    
+    Example:
+        ```python
+        # AdamW with cosine learning rate schedule
+        config = OptimizerConfig(
+            name="adamw",
+            learning_rate=0.001,
+            weight_decay=0.01,
+            scheduler="cosine"
+        )
+        
+        # SGD with momentum and no scheduler
+        config = OptimizerConfig(
+            name="sgd",
+            learning_rate=0.01,
+            momentum=0.9,
+            scheduler=None
+        )
+        
+        # Create optimizer and scheduler
+        optimizer, scheduler = OptimizerBuilder.build(config, model.parameters())
+        ```
+    
+    Limitations:
+        - Limited to three optimizer types (Adam, AdamW, SGD)
+        - Not all schedulers are fully implemented in OptimizerBuilder
+        - No support for parameter-group-specific learning rates
+        - Warmup implementation depends on the training loop integration
+    """
     name: Literal["adam", "adamw", "sgd"] = "adamw"
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
@@ -178,6 +364,92 @@ class LossConfig(BaseModel):
     name: Literal["mse", "l1", "huber", "custom"] = "mse"
 
 class ModelConfig(BaseModel):
+    """
+    Configuration for neural network architecture selection and hyperparameters in audio-to-biosignal modeling.
+    
+    ModelConfig encapsulates the complete specification of neural network architectures
+    and their hyperparameters, providing a unified interface for model instantiation with
+    architecture-specific validation. It ensures that all required parameters for each
+    supported architecture are provided while allowing flexible extension.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Uses field validation to enforce architecture-specific parameter requirements
+        - Supports multiple model architectures with type-safe selection
+        - Maintains extensibility through dictionary-based parameter specification
+    
+    Attributes:
+        architecture (Literal["tcn", "wavenet"]): Neural network architecture selection
+        params (Dict[str, Any]): Architecture-specific parameters dictionary
+            
+            TCN architecture required parameters:
+                input_size (int): Dimensionality of input features
+                output_size (int): Dimensionality of output predictions
+                num_blocks (int): Number of TCN blocks in the network
+                num_channels (int): Number of channels in convolutional layers
+                kernel_size (int): Size of convolutional kernels
+                dropout (float): Dropout probability for regularization
+                
+            Wavenet architecture required parameters:
+                num_stacks (int): Number of stacked dilated convolution blocks
+                num_layers_per_stack (int): Number of layers in each stack
+                residual_channels (int): Number of channels in residual connections
+                skip_channels (int): Number of channels in skip connections
+                kernel_size (int): Size of convolutional kernels
+                dilation_base (int): Base for exponential dilation rates
+                dropout_rate (float): Dropout probability for regularization
+                input_channels (int): Dimensionality of input features
+                output_channels (int): Dimensionality of output predictions
+                use_bias (bool): Whether to include bias terms in convolutions
+    
+    Integration:
+        - Used by model factory functions to instantiate neural network models
+        - Consumed by training scripts to configure model architecture
+        - Validated during configuration loading to ensure all required parameters are present
+        - Supports serialization to/from YAML configuration files
+    
+    Example:
+        ```python
+        # TCN model configuration
+        tcn_config = ModelConfig(
+            architecture="tcn",
+            params={
+                "input_size": 40,
+                "output_size": 1,
+                "num_blocks": 5,
+                "num_channels": 64,
+                "kernel_size": 3,
+                "dropout": 0.2
+            }
+        )
+        
+        # Wavenet model configuration
+        wavenet_config = ModelConfig(
+            architecture="wavenet",
+            params={
+                "num_stacks": 2,
+                "num_layers_per_stack": 10,
+                "residual_channels": 64,
+                "skip_channels": 256,
+                "kernel_size": 3,
+                "dilation_base": 2,
+                "dropout_rate": 0.2,
+                "input_channels": 40,
+                "output_channels": 1,
+                "use_bias": True
+            }
+        )
+        
+        # Create model instance
+        model = TCN(**tcn_config.params)
+        ```
+    
+    Limitations:
+        - Limited to two model architectures (TCN, Wavenet)
+        - No validation for parameter value ranges or types
+        - No support for custom or composite architectures
+        - Architecture-specific parameters must be updated when adding new architectures
+    """
     architecture: Literal["tcn", "wavenet"]
     params: Dict[str, Any]
 
@@ -211,6 +483,58 @@ class MetricsConfig(BaseModel):
     early_stopping_min_delta: float = 0.0001
 
 class LoggingConfig(BaseModel):
+    """
+    Configuration for experiment logging and monitoring in audio-to-biosignal modeling.
+    
+    LoggingConfig encapsulates the parameters for Weights & Biases (wandb) integration,
+    controlling experiment tracking, visualization, and reporting. It provides a unified
+    interface for configuring logging behavior with sensible defaults while enabling
+    experiment organization through projects, entities, and tags.
+    
+    Architecture:
+        - Implements a declarative configuration pattern using Pydantic BaseModel
+        - Supports hierarchical experiment organization through projects and optional entities
+        - Enables experiment identification and filtering through run names and tags
+        - Controls logging frequency to balance visibility and performance
+    
+    Attributes:
+        wandb_project (str): Project name for grouping related experiments in wandb
+        wandb_entity (Optional[str]): Team or username for organizational hierarchy (default: None)
+        wandb_run_name (Optional[str]): Unique identifier for the specific experiment run (default: None)
+        wandb_tags (List[str]): Categorical labels for filtering and organizing runs (default: [])
+        log_every_n_steps (int): Frequency of metric logging during training (default: 50)
+    
+    Integration:
+        - Used by training scripts to initialize and configure wandb logging
+        - Consumed by experiment tracking systems for run organization
+        - Controls metric visualization granularity and storage requirements
+        - Supports reproducibility through consistent experiment naming
+    
+    Example:
+        ```python
+        config = LoggingConfig(
+            wandb_project="audio2biosignal",
+            wandb_entity="research-team",
+            wandb_run_name="tcn-model-v1",
+            wandb_tags=["production", "tcn", "eda-prediction"],
+            log_every_n_steps=100
+        )
+        
+        # Initialize wandb with this configuration
+        wandb.init(
+            project=config.wandb_project,
+            entity=config.wandb_entity,
+            name=config.wandb_run_name,
+            tags=config.wandb_tags
+        )
+        ```
+    
+    Limitations:
+        - Limited to wandb as the only supported logging platform
+        - No validation for project/entity existence in wandb
+        - No support for custom metric logging configurations
+        - No automatic handling of API keys or authentication
+    """
     wandb_project: str
     wandb_entity: Optional[str] = None
     wandb_run_name: Optional[str] = None

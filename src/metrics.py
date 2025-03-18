@@ -289,15 +289,66 @@ class MetricsCalculator:
     def calculate_metrics(pred: torch.Tensor, actual: torch.Tensor, 
                           metrics_list: List[str]) -> Dict[str, float]:
         """
-        Calculate specified metrics between predicted and actual time series.
+        Calculate specified metrics between predicted and actual time series data with dynamic dispatch.
         
-        Args:
-            pred: Predicted time series tensor
-            actual: Actual time series tensor
-            metrics_list: List of metric names to calculate
+        Computes multiple evaluation metrics in a single pass by dynamically dispatching to specialized
+        metric implementations based on the provided metrics list. Serves as the primary entry point
+        for all metric calculations in the evaluation pipeline.
+        
+        Architecture:
+            - Implements O(1) dispatch to appropriate metric functions via dictionary lookup pattern
+            - Aggregates results into a single dictionary with O(k) space complexity where k is the number of metrics
+            - Each metric function has its own computational complexity:
+              * MSE: O(n) time, O(1) space
+              * DTW: O(nm) time, O(nm) space
+              * Frechet: O(nm) time, O(nm) space
+            - No caching mechanism; recalculates metrics on each call
+        
+        Interface:
+            - pred: PyTorch tensor of predicted values (any shape, will be flattened by metric functions)
+              * Must contain finite numeric values
+              * Should match temporal dimension of actual tensor
+              * Automatically detached from computation graph during metric calculation
+            - actual: PyTorch tensor of ground truth values (any shape, will be flattened by metric functions)
+              * Must contain finite numeric values
+              * Should match temporal dimension of pred tensor
+              * Automatically detached from computation graph during metric calculation
+            - metrics_list: List of string identifiers for metrics to calculate
+              * Supported values: "mse", "dtw", "frechet"
+              * Unknown metrics are silently ignored
+              * Empty list returns empty dictionary
+              * Order of metrics in list does not affect calculation order
             
         Returns:
-            Dict[str, float]: Dictionary of metric names and values
+            Dict[str, float]: Dictionary mapping metric names to their computed values
+              * Keys match the strings provided in metrics_list (if supported)
+              * Values are Python floats, suitable for serialization
+              * Empty dictionary if metrics_list is empty or contains only unsupported metrics
+        
+        Behavior:
+            - Thread-safe with no side effects or persistent state
+            - Skips "loss" metric as it's calculated separately in training loops
+            - Silently ignores unrecognized metric names without raising exceptions
+            - Each metric calculation is independent; failure in one doesn't affect others
+            - Input tensors are not modified; all operations create new tensors/arrays
+        
+        Integration:
+            - Designed for direct use in training and evaluation loops
+            - Compatible with logging systems like Weights & Biases
+            - Example:
+              ```
+              val_metrics = MetricsCalculator.calculate_metrics(
+                  model_output, ground_truth, ["mse", "dtw", "frechet"]
+              )
+              wandb.log({"val/mse": val_metrics["mse"], "val/dtw": val_metrics["dtw"]})
+              ```
+        
+        Limitations:
+            - No support for custom or user-defined metrics
+            - Processes single samples, not batched calculations
+            - No parallel computation of multiple metrics
+            - All metrics assume 1D time series (multi-dimensional inputs are flattened)
+            - No validation of metric names; invalid names are silently ignored
         """
         results = {}
         
