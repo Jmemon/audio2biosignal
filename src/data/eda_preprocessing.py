@@ -41,7 +41,7 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
     - Thread-safe but not optimized for batch processing
     """
     eda_data = eda_signal.numpy() if isinstance(eda_signal, torch.Tensor) else eda_signal
-    original_sample_rate = 1000  # Assuming original EDA sample rate
+    original_sample_rate = 50  # Assuming original EDA sample rate
     if original_sample_rate != feature_config.mutual_sample_rate:
         resample_factor = feature_config.mutual_sample_rate / original_sample_rate
         eda_data = resample(eda_data, int(len(eda_data) * resample_factor))
