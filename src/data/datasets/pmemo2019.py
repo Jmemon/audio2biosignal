@@ -44,7 +44,11 @@ def collate_fn(batch):
         - Right-alignment preserves temporal relationship between audio and EDA signals
         - Zero-padding is applied to the left side of sequences
     """
+    print(f"[collate_fn PMEmo2019] Processing batch of size: {len(batch)}")
     audio_tensors, eda_tensors = zip(*batch)
+    print(f"[collate_fn PMEmo2019] Audio tensors shapes: {[tensor.shape for tensor in audio_tensors]}")
+    print(f"[collate_fn PMEmo2019] EDA tensors shapes: {[tensor.shape for tensor in eda_tensors]}")
+    
     # Calculate max_time_steps by considering both audio and EDA tensors
     max_time_steps = max(
         max(tensor.size(-1) for tensor in audio_tensors),
@@ -58,6 +62,8 @@ def collate_fn(batch):
     # Extract dimensions from the first EDA tensor
     eda_channels = eda_tensors[0].size(0)
     
+    print(f"[collate_fn PMEmo2019] max_time_steps: {max_time_steps}, audio_channels: {audio_channels}, num_mfccs: {num_mfccs}, eda_channels: {eda_channels}")
+    
     # Initialize padded tensors with the correct dimensions
     padded_audio = torch.zeros(len(batch), audio_channels, num_mfccs, max_time_steps)
     padded_eda = torch.zeros(len(batch), eda_channels, max_time_steps)
@@ -65,11 +71,14 @@ def collate_fn(batch):
     for i, (audio, eda) in enumerate(batch):
         audio_time_steps = audio.size(-1)
         eda_time_steps = eda.size(-1)
+        print(f"[collate_fn PMEmo2019] Sample {i}: audio_time_steps={audio_time_steps}, eda_time_steps={eda_time_steps}")
         
         # Right-align the audio and EDA data in the padded tensors
         padded_audio[i, :, :, -audio_time_steps:] = audio
         padded_eda[i, :, -eda_time_steps:] = eda
 
+    print(f"[collate_fn PMEmo2019] Final padded_audio shape: {padded_audio.shape}")
+    print(f"[collate_fn PMEmo2019] Final padded_eda shape: {padded_eda.shape}")
     return padded_audio, padded_eda
 
 class PMEmo2019Dataset(Dataset):

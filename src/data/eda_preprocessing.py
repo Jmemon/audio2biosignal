@@ -40,22 +40,33 @@ def preprocess_eda(eda_signal: torch.Tensor, feature_config: AudioEDAFeatureConf
     - Ensures memory contiguity for efficient tensor operations
     - Thread-safe but not optimized for batch processing
     """
+    print(f"[preprocess_eda] Input eda_signal shape: {eda_signal.shape if isinstance(eda_signal, torch.Tensor) else eda_signal.shape if hasattr(eda_signal, 'shape') else len(eda_signal)}")
     eda_data = eda_signal.numpy() if isinstance(eda_signal, torch.Tensor) else eda_signal
+    print(f"[preprocess_eda] After conversion to numpy, eda_data shape: {eda_data.shape}")
+    
     if feature_config.eda_original_sample_rate != feature_config.mutual_sample_rate:
         resample_factor = feature_config.mutual_sample_rate / feature_config.eda_original_sample_rate
         eda_data = resample(eda_data, int(len(eda_data) * resample_factor))
+        print(f"[preprocess_eda] After resampling, eda_data shape: {eda_data.shape}")
     if feature_config.eda_normalize:
         eda_data = (eda_data - eda_data.mean()) / eda_data.std()
+        print(f"[preprocess_eda] After normalization, eda_data shape: {eda_data.shape}")
     if feature_config.filter_highpass:
         b, a = butter(2, 0.05, btype='highpass', fs=feature_config.mutual_sample_rate)
         eda_data = filtfilt(b, a, eda_data)
+        print(f"[preprocess_eda] After highpass filter, eda_data shape: {eda_data.shape}")
     if feature_config.filter_lowpass:
         b, a = butter(2, 8, btype='lowpass', fs=feature_config.mutual_sample_rate)
         eda_data = filtfilt(b, a, eda_data)
+        print(f"[preprocess_eda] After lowpass filter, eda_data shape: {eda_data.shape}")
     if not isinstance(eda_data, torch.Tensor):
         # Ensure array is contiguous in memory before tensor conversion
         eda_data = np.ascontiguousarray(eda_data)
         eda_tensor = torch.tensor(eda_data, dtype=torch.float32).unsqueeze(0)  # Shape: (1, time_steps)
+        print(f"[preprocess_eda] After tensor conversion and unsqueeze, eda_tensor shape: {eda_tensor.shape}")
     else:
         eda_tensor = eda_data.unsqueeze(0) if eda_data.dim() == 1 else eda_data
+        print(f"[preprocess_eda] After tensor processing, eda_tensor shape: {eda_tensor.shape}")
+    
+    print(f"[preprocess_eda] Final output shape: {eda_tensor.shape}")
     return eda_tensor

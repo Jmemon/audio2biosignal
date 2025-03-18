@@ -43,9 +43,14 @@ def collate_fn(batch):
         - Right-alignment preserves temporal relationship between audio and EDA signals
         - Zero-padding is applied to the left side of sequences
     """
+    print(f"[collate_fn HKU956] Processing batch of size: {len(batch)}")
     audio_tensors, eda_tensors = zip(*batch)
+    print(f"[collate_fn HKU956] Audio tensors shapes: {[tensor.shape for tensor in audio_tensors]}")
+    print(f"[collate_fn HKU956] EDA tensors shapes: {[tensor.shape for tensor in eda_tensors]}")
+    
     max_length = max(tensor.size(1) for tensor in audio_tensors)
     audio_features = audio_tensors[0].size(0)
+    print(f"[collate_fn HKU956] Max length: {max_length}, Audio features: {audio_features}")
 
     padded_audio = torch.zeros(len(batch), audio_features, max_length)
     padded_eda = torch.zeros(len(batch), max_length)
@@ -53,9 +58,13 @@ def collate_fn(batch):
     for i, (audio, eda) in enumerate(batch):
         audio_length = audio.size(1)
         eda_length = eda.size(1)
+        print(f"[collate_fn HKU956] Sample {i}: audio_length={audio_length}, eda_length={eda_length}")
+        
         padded_audio[i, :, -audio_length:] = audio
         padded_eda[i, -eda_length:] = eda
 
+    print(f"[collate_fn HKU956] Final padded_audio shape: {padded_audio.shape}")
+    print(f"[collate_fn HKU956] Final padded_eda shape: {padded_eda.shape}")
     return padded_audio, padded_eda
 
 class HKU956Dataset(Dataset):

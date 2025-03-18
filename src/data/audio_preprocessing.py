@@ -43,8 +43,10 @@ def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: A
     - Zero-length inputs may produce undefined behavior in MFCC transform
     - Resampling is performed on the MFCC features, not the raw audio
     """
+    print(f"[preprocess_audio] Input waveform shape: {waveform.shape}, sample_rate: {sample_rate}")
     if feature_config.audio_normalize:
         waveform = waveform / waveform.abs().max()
+        print(f"[preprocess_audio] After normalization, waveform shape: {waveform.shape}")
     
     # Compute MFCC at original sample rate
     mfcc_transform = torchaudio.transforms.MFCC(
@@ -57,6 +59,7 @@ def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: A
         }
     )
     mfcc = mfcc_transform(waveform)  # Shape: (channels, n_mfcc, time_steps)
+    print(f"[preprocess_audio] After MFCC transform, shape: {mfcc.shape}")
     
     # Resample MFCC features along the time dimension if needed
     if sample_rate != feature_config.mutual_sample_rate:
@@ -76,5 +79,7 @@ def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: A
             mode='linear',
             align_corners=False
         )
+        print(f"[preprocess_audio] After resampling, mfcc shape: {mfcc.shape}")
     
+    print(f"[preprocess_audio] Final output shape: {mfcc.shape}")
     return mfcc  # Shape: (channels, n_mfcc, resampled_time_steps)
