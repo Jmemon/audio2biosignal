@@ -111,7 +111,7 @@ def main():
                     'eda_path': eda_s3_path,
                     'duration': duration
                 }
-                cache_status = "(from cache)" if cache_flag else "(downloaded)"
+                cache_status = "(cache hit)" if cache_flag else "(downloaded)"
                 print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s {cache_status}")
                 return result
         except Exception as e:
