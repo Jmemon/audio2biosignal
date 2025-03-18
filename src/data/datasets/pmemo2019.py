@@ -45,7 +45,11 @@ def collate_fn(batch):
         - Zero-padding is applied to the left side of sequences
     """
     audio_tensors, eda_tensors = zip(*batch)
-    max_time_steps = max(tensor.size(-1) for tensor in audio_tensors)
+    # Calculate max_time_steps by considering both audio and EDA tensors
+    max_time_steps = max(
+        max(tensor.size(-1) for tensor in audio_tensors),
+        max(tensor.size(-1) for tensor in eda_tensors)
+    )
     
     # Extract dimensions from the first audio tensor
     audio_channels = audio_tensors[0].size(0)
