@@ -12,6 +12,8 @@ import tempfile
 from pathlib import Path
 import os
 import sys
+import torchaudio
+import urllib.request
 
 # Add the project root to the Python path to ensure src module is accessible
 project_root = Path(__file__).resolve().parent.parent
@@ -74,13 +76,28 @@ def main():
                 audio_path = song_id_to_audio.get(song_id)
                 
                 if audio_path:
-                    # Add to metadata rows
-                    metadata_rows.append({
-                        'subject': participant_id,
-                        'song_id': song_id,
-                        'audio_path': audio_path,
-                        'eda_path': eda_s3_path
-                    })
+                    # Download the audio file to get its duration
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio_file:
+                            urllib.request.urlretrieve(audio_path, temp_audio_file.name)
+                            # Load the audio file to get its sample rate and duration
+                            waveform, sample_rate = torchaudio.load(temp_audio_file.name)
+                            duration = waveform.shape[1] / sample_rate  # Duration in seconds
+                            
+                            # Clean up the temporary audio file
+                            os.unlink(temp_audio_file.name)
+                            
+                            # Add to metadata rows with duration
+                            metadata_rows.append({
+                                'subject': participant_id,
+                                'song_id': song_id,
+                                'audio_path': audio_path,
+                                'eda_path': eda_s3_path,
+                                'duration': duration
+                            })
+                            print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
+                    except Exception as e:
+                        print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
             except Exception as e:
                 print(f"Warning: EDA file not found for participant {participant_id}, song {song_id}: {e}")
                 continue
@@ -88,7 +105,7 @@ def main():
     # Create a temporary CSV file
     print(f"Writing {len(metadata_rows)} rows to CSV...")
     with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file:
-        fieldnames = ['subject', 'song_id', 'audio_path', 'eda_path']
+        fieldnames = ['subject', 'song_id', 'audio_path', 'eda_path', 'duration']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(metadata_rows)
