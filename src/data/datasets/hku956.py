@@ -7,6 +7,8 @@ from src.data.eda_preprocessing import preprocess_eda
 from src.utilities import S3FileManager
 import csv
 import pandas as pd
+import os
+import re
 
 def collate_fn(batch):
     """
@@ -189,8 +191,6 @@ class HKU956Dataset(Dataset):
         
         # Extract song_id from eda_file_path
         # Assuming filename format is <song_no>_<song_id>.csv
-        import os
-        import re
         filename = os.path.basename(eda_file_path)
         song_id_match = re.search(r'_(\d+)\.csv', filename)
         
