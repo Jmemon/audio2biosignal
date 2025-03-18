@@ -141,6 +141,41 @@ class PMEmo2019Dataset(Dataset):
                 })
 
     def _load_audio_file(self, audio_file_s3_path: str) -> torch.Tensor:
+        """
+        Load and preprocess an audio file from S3 storage for model training.
+        
+        This method retrieves audio data from cloud storage, loads it using torchaudio,
+        and applies standardized preprocessing to prepare it for model training. It handles
+        the complete pipeline from S3 file retrieval to tensor preparation.
+        
+        Architecture:
+            - Downloads audio from S3 with O(1) lookup via caching
+            - Loads audio with torchaudio's efficient I/O operations
+            - Applies feature extraction and preprocessing with O(n) complexity
+            - Time complexity dominated by preprocessing: O(n) where n is audio length
+            
+        Parameters:
+            audio_file_s3_path: str
+                S3 path to the audio file to be loaded and processed
+                
+        Returns:
+            torch.Tensor:
+                Preprocessed audio tensor with shape determined by feature_config
+                
+        Raises:
+            ValueError: If audio_file_s3_path is empty
+            FileNotFoundError: If the S3 file cannot be accessed
+            RuntimeError: If audio loading or preprocessing fails
+            
+        Thread Safety:
+            - Thread-safe for concurrent calls with different parameters
+            - Relies on S3FileManager's thread safety for file access
+            
+        Notes:
+            - Supports various audio formats handled by torchaudio
+            - Preprocessing applies feature extraction based on feature_config
+            - Caches downloaded files via S3FileManager for repeated access efficiency
+        """
         # Download the audio file from the URL
         local_audio_path = self.s3_manager.download_file(audio_file_s3_path)
         # Load audio with torchaudio
