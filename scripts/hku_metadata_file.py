@@ -80,9 +80,10 @@ def main():
             
             if audio_path:
                 # Check if we already have the duration for this song_id
+                cache_flag = False
                 if song_id in song_duration_cache:
                     duration = song_duration_cache[song_id]
-                    print(f"Using cached duration for song {song_id}: {duration:.2f}s")
+                    cache_flag = True
                 else:
                     # Download the audio file to get its duration
                     temp_audio_file = None
@@ -95,7 +96,6 @@ def main():
                             
                             # Cache the duration for future use
                             song_duration_cache[song_id] = duration
-                            print(f"Downloaded and cached duration for song {song_id}: {duration:.2f}s")
                     except Exception as e:
                         print(f"Warning: Could not process audio file for participant {participant_id}, song {song_id}: {e}")
                         return None
@@ -111,7 +111,8 @@ def main():
                     'eda_path': eda_s3_path,
                     'duration': duration
                 }
-                print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s")
+                cache_status = "(from cache)" if cache_flag else "(downloaded)"
+                print(f"Processed: Participant {participant_id}, Song {song_id}, Duration: {duration:.2f}s {cache_status}")
                 return result
         except Exception as e:
             print(f"Warning: EDA file not found for participant {participant_id}, song {song_id}: {e}")
