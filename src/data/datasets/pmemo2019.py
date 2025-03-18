@@ -236,6 +236,12 @@ class PMEmo2019Dataset(Dataset):
         eda_df = pd.read_csv(local_eda_path)
         time_col = eda_df.columns[0]
         eda_series = eda_df[subject_id]
+        
+        # Calculate sample rate: divide number of samples by duration in seconds
+        # Duration is the last value in the time column
+        duration_seconds = eda_df[time_col].iloc[-1]
+        sample_rate = len(eda_series) / duration_seconds
+        
         # Convert series to tensor before preprocessing
         eda_signal = torch.tensor(eda_series.values, dtype=torch.float32)
         # Process the EDA tensor
