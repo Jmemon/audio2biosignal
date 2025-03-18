@@ -225,7 +225,44 @@ class PMEmo2019Dataset(Dataset):
         """
         return len(self.examples)
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Retrieve and process a single example from the dataset at the specified index.
+        
+        This method implements PyTorch's Dataset protocol for indexed access, retrieving
+        the audio and EDA data for a specific (subject_id, music_id) pair. It handles the
+        complete data loading pipeline including S3 file retrieval, audio/EDA preprocessing,
+        and tensor preparation with lazy evaluation for memory efficiency.
+        
+        Architecture:
+            - Performs O(1) lookup in the examples list for file references
+            - Delegates to specialized loading methods for audio and EDA processing
+            - Implements lazy loading pattern, only retrieving data when requested
+            - Time complexity dominated by audio/EDA preprocessing: O(n) where n is signal length
+            - Space complexity: O(m) where m is the size of the processed tensors
+        
+        Parameters:
+            index: int
+                Zero-based index into the dataset's examples list
+                
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]:
+                - audio_tensor: Preprocessed audio features with shape determined by feature_config
+                - eda_tensor: Preprocessed EDA signal with shape determined by feature_config
+                
+        Raises:
+            IndexError: If index is out of bounds (< 0 or >= len(self))
+            RuntimeError: If audio or EDA file loading/processing fails
+            
+        Thread Safety:
+            - Thread-safe for concurrent calls with different indices
+            - Relies on S3FileManager's thread safety for file access
+            
+        Notes:
+            - Core method used by PyTorch DataLoader during training/evaluation
+            - No caching of processed tensors between calls (stateless design)
+            - Audio and EDA tensors are guaranteed to have matching temporal dimensions
+        """
         example = self.examples[index]
         (subject_id, music_id), (audio_s3_path, eda_s3_path) = list(example.items())[0]
         audio_tensor = self._load_audio_file(audio_s3_path)
