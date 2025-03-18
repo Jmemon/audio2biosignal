@@ -16,25 +16,26 @@ def collate_fn(batch):
     
     This function handles the conversion of individual dataset samples into properly formatted
     batches, ensuring all tensors have consistent dimensions by right-aligned padding with zeros.
-    It maintains temporal alignment between audio features and corresponding EDA signals.
+    It handles audio tensors with shape [channels, num_mfccs, time_steps] and EDA tensors with
+    shape [channels, time_steps].
     
     Architecture:
-        - Determines maximum sequence length across all samples in the batch with O(n) complexity
+        - Determines maximum sequence length across all samples in the batch
         - Creates zero-padded tensors of uniform size for both audio and EDA data
         - Preserves original data by right-aligning within padded tensors
+        - Maintains the semantic meaning of dimensions for both audio and EDA
         - Time complexity: O(n) where n is the batch size
-        - Space complexity: O(n*m) where m is the maximum sequence length
     
     Parameters:
         batch: List[Tuple[torch.Tensor, torch.Tensor]]
             List of (audio_tensor, eda_tensor) pairs where:
-            - audio_tensor: Shape [features, length]
-            - eda_tensor: Shape [length]
+            - audio_tensor: Shape [channels, num_mfccs, time_steps]
+            - eda_tensor: Shape [channels, time_steps]
             
     Returns:
         Tuple[torch.Tensor, torch.Tensor]:
-            - padded_audio: Tensor of shape [batch_size, features, max_length]
-            - padded_eda: Tensor of shape [batch_size, max_length]
+            - padded_audio: Tensor of shape [batch_size, channels, num_mfccs, max_time_steps]
+            - padded_eda: Tensor of shape [batch_size, channels, max_time_steps]
             
     Raises:
         IndexError: If batch is empty
@@ -50,20 +51,33 @@ def collate_fn(batch):
     print(f"[collate_fn HKU956] Audio tensors shapes: {[tensor.shape for tensor in audio_tensors]}")
     print(f"[collate_fn HKU956] EDA tensors shapes: {[tensor.shape for tensor in eda_tensors]}")
     
-    max_length = max(tensor.size(1) for tensor in audio_tensors)
-    audio_features = audio_tensors[0].size(0)
-    print(f"[collate_fn HKU956] Max length: {max_length}, Audio features: {audio_features}")
-
-    padded_audio = torch.zeros(len(batch), audio_features, max_length)
-    padded_eda = torch.zeros(len(batch), max_length)
+    # Calculate max_time_steps by considering both audio and EDA tensors
+    max_time_steps = max(
+        max(tensor.size(-1) for tensor in audio_tensors),
+        max(tensor.size(-1) for tensor in eda_tensors)
+    )
+    
+    # Extract dimensions from the first audio tensor
+    audio_channels = audio_tensors[0].size(0)
+    num_mfccs = audio_tensors[0].size(1)
+    
+    # Extract dimensions from the first EDA tensor
+    eda_channels = eda_tensors[0].size(0)
+    
+    print(f"[collate_fn HKU956] max_time_steps: {max_time_steps}, audio_channels: {audio_channels}, num_mfccs: {num_mfccs}, eda_channels: {eda_channels}")
+    
+    # Initialize padded tensors with the correct dimensions
+    padded_audio = torch.zeros(len(batch), audio_channels, num_mfccs, max_time_steps)
+    padded_eda = torch.zeros(len(batch), eda_channels, max_time_steps)
 
     for i, (audio, eda) in enumerate(batch):
-        audio_length = audio.size(1)
-        eda_length = eda.size(1)
-        print(f"[collate_fn HKU956] Sample {i}: audio_length={audio_length}, eda_length={eda_length}")
+        audio_time_steps = audio.size(-1)
+        eda_time_steps = eda.size(-1)
+        print(f"[collate_fn HKU956] Sample {i}: audio_time_steps={audio_time_steps}, eda_time_steps={eda_time_steps}")
         
-        padded_audio[i, :, -audio_length:] = audio
-        padded_eda[i, -eda_length:] = eda
+        # Right-align the audio and EDA data in the padded tensors
+        padded_audio[i, :, :, -audio_time_steps:] = audio
+        padded_eda[i, :, -eda_time_steps:] = eda
 
     print(f"[collate_fn HKU956] Final padded_audio shape: {padded_audio.shape}")
     print(f"[collate_fn HKU956] Final padded_eda shape: {padded_eda.shape}")
