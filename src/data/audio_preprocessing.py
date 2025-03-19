@@ -48,9 +48,19 @@ def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: A
         waveform = waveform / waveform.abs().max()
         print(f"[preprocess_audio] After normalization, waveform shape: {waveform.shape}")
     
-    # Compute MFCC at original sample rate
+    # Resample audio if target_sample_rate is specified
+    if feature_config.audio_target_sample_rate is not None and sample_rate != feature_config.audio_target_sample_rate:
+        resampler = torchaudio.transforms.Resample(
+            orig_freq=sample_rate,
+            new_freq=feature_config.audio_target_sample_rate
+        )
+        waveform = resampler(waveform)
+        sample_rate = feature_config.audio_target_sample_rate
+        print(f"[preprocess_audio] After resampling, waveform shape: {waveform.shape}")
+    
+    # Compute MFCC at sample rate
     mfcc_transform = torchaudio.transforms.MFCC(
-        sample_rate=sample_rate,  # Use original sample rate
+        sample_rate=sample_rate,  # Use current sample rate
         n_mfcc=feature_config.audio_n_mfcc,
         melkwargs={
             'n_mels': feature_config.audio_n_mels,
@@ -60,26 +70,6 @@ def preprocess_audio(waveform: torch.Tensor, sample_rate: int, feature_config: A
     )
     mfcc = mfcc_transform(waveform)  # Shape: (channels, n_mfcc, time_steps)
     print(f"[preprocess_audio] After MFCC transform, shape: {mfcc.shape}")
-    
-    # Resample MFCC features along the time dimension if needed
-    if sample_rate != feature_config.mutual_sample_rate:
-        # Calculate the scaling factor for time dimension
-        scale_factor = feature_config.mutual_sample_rate / sample_rate
-        
-        # Get current dimensions
-        channels, n_mfcc, time_steps = mfcc.shape
-        
-        # Calculate new time steps after resampling
-        new_time_steps = int(time_steps * scale_factor)
-        
-        # Use interpolate to resample along the time dimension (dim=2)
-        mfcc = torch.nn.functional.interpolate(
-            mfcc, 
-            size=new_time_steps,
-            mode='linear',
-            align_corners=False
-        )
-        print(f"[preprocess_audio] After resampling, mfcc shape: {mfcc.shape}")
     
     print(f"[preprocess_audio] Final output shape: {mfcc.shape}")
     return mfcc  # Shape: (channels, n_mfcc, resampled_time_steps)

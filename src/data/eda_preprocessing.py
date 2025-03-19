@@ -46,19 +46,22 @@ def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: A
     eda_data = eda_signal.numpy() if isinstance(eda_signal, torch.Tensor) else eda_signal
     print(f"[preprocess_eda] After conversion to numpy, eda_data shape: {eda_data.shape}")
     
-    if sample_rate != feature_config.mutual_sample_rate:
-        resample_factor = feature_config.mutual_sample_rate / sample_rate
+    # Resample only if target_sample_rate is specified
+    if feature_config.eda_target_sample_rate is not None and sample_rate != feature_config.eda_target_sample_rate:
+        resample_factor = feature_config.eda_target_sample_rate / sample_rate
         eda_data = resample(eda_data, int(len(eda_data) * resample_factor))
         print(f"[preprocess_eda] After resampling, eda_data shape: {eda_data.shape}")
+        # Update sample_rate for filtering
+        sample_rate = feature_config.eda_target_sample_rate
     if feature_config.eda_normalize:
         eda_data = (eda_data - eda_data.mean()) / eda_data.std()
         print(f"[preprocess_eda] After normalization, eda_data shape: {eda_data.shape}")
     if feature_config.filter_highpass:
-        b, a = butter(2, 0.05, btype='highpass', fs=feature_config.mutual_sample_rate)
+        b, a = butter(2, 0.05, btype='highpass', fs=sample_rate)
         eda_data = filtfilt(b, a, eda_data)
         print(f"[preprocess_eda] After highpass filter, eda_data shape: {eda_data.shape}")
     if feature_config.filter_lowpass:
-        b, a = butter(2, 8, btype='lowpass', fs=feature_config.mutual_sample_rate)
+        b, a = butter(2, 8, btype='lowpass', fs=sample_rate)
         eda_data = filtfilt(b, a, eda_data)
         print(f"[preprocess_eda] After lowpass filter, eda_data shape: {eda_data.shape}")
     if not isinstance(eda_data, torch.Tensor):

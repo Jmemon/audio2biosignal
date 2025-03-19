@@ -231,9 +231,8 @@ class AudioEDAFeatureConfig(BaseModel):
         - Enables independent control of filtering strategies for each modality
     
     Attributes:
-        mutual_sample_rate (int): Target sample rate in Hz for both modalities (default: 200)
-        
         # Audio processing parameters
+        audio_target_sample_rate (Optional[int]): Target sample rate in Hz for audio (default: None, no resampling)
         audio_normalize (bool): Whether to normalize audio amplitude to [-1, 1] (default: True)
         audio_n_mfcc (int): Number of Mel-frequency cepstral coefficients (default: 40)
         audio_n_mels (int): Number of Mel filterbank features (default: 128)
@@ -241,6 +240,7 @@ class AudioEDAFeatureConfig(BaseModel):
         audio_hop_length (int): STFT hop length in samples (default: 160)
         
         # EDA processing parameters
+        eda_target_sample_rate (Optional[int]): Target sample rate in Hz for EDA (default: None, no resampling)
         eda_window_size (int): Analysis window size in samples (default: 400)
         eda_hop_length (int): Analysis hop length in samples (default: 160)
         eda_normalize (bool): Whether to normalize EDA signals (default: True)
@@ -260,7 +260,8 @@ class AudioEDAFeatureConfig(BaseModel):
         
         # Custom configuration for higher resolution processing
         custom_config = AudioEDAFeatureConfig(
-            mutual_sample_rate=500,
+            audio_target_sample_rate=500,
+            eda_target_sample_rate=500,
             audio_n_mfcc=60,
             audio_n_mels=256,
             filter_highpass=True
@@ -276,10 +277,8 @@ class AudioEDAFeatureConfig(BaseModel):
         - Fixed filter cutoff frequencies (8Hz lowpass, 0.05Hz highpass)
         - No support for advanced audio features (e.g., spectral contrast, chroma)
     """
-    # Mutual configurations
-    mutual_sample_rate: int = 200  # Hz
-
     # Audio configurations
+    audio_target_sample_rate: Optional[int] = None  # Hz, None means no resampling
     audio_normalize: bool = True
     audio_n_mfcc: int = 40
     audio_n_mels: int = 128
@@ -287,6 +286,7 @@ class AudioEDAFeatureConfig(BaseModel):
     audio_hop_length: int = 160   # STFT hop length
 
     # EDA configurations
+    eda_target_sample_rate: Optional[int] = None  # Hz, None means no resampling
     eda_window_size: int = 400
     eda_hop_length: int = 160
     eda_normalize: bool = True

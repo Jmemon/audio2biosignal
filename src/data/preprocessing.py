@@ -4,7 +4,7 @@ import torchaudio.functional as F
 import torchaudio.transforms as T
 import numpy as np
 from pydantic import BaseModel
-from typing import Tuple
+from typing import Tuple, Optional
 from src.configs import AudioEDAFeatureConfig
 
 def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_config: AudioEDAFeatureConfig) -> torch.Tensor:
@@ -25,7 +25,6 @@ def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_confi
         audio_signal = audio_signal.unsqueeze(0)
     
     num_channels = audio_signal.shape[0]
-    target_sr = feature_config.mutual_sample_rate
     
     # Apply normalization if configured
     if feature_config.audio_normalize:
@@ -36,8 +35,9 @@ def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_confi
         eps = 1e-8
         audio_signal = (audio_signal - mean) / (std + eps)
     
-    # Resample audio to target sample rate if needed
-    if sample_rate != target_sr:
+    # Resample audio to target sample rate if needed and if target_sample_rate is specified
+    target_sr = feature_config.audio_target_sample_rate
+    if target_sr is not None and sample_rate != target_sr:
         # Use torchaudio's resample function for each channel
         resampler = T.Resample(orig_freq=sample_rate, new_freq=target_sr)
         
@@ -49,6 +49,8 @@ def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_confi
         
         # Stack channels back together
         audio_signal = torch.stack(resampled_channels)
+        # Update sample_rate for MFCC calculation
+        sample_rate = target_sr
     
     # Compute MFCCs for each channel
     mfcc_features = []
@@ -57,7 +59,7 @@ def preprocess_audio(audio_signal: torch.Tensor, sample_rate: int, feature_confi
         
         # Create MFCC transform
         mfcc_transform = T.MFCC(
-            sample_rate=target_sr,
+            sample_rate=sample_rate,
             n_mfcc=feature_config.audio_n_mfcc,
             melkwargs={
                 'n_fft': feature_config.audio_window_size,
@@ -94,8 +96,6 @@ def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: A
     if eda_signal.dim() == 1:
         eda_signal = eda_signal.unsqueeze(0)
     
-    target_sr = feature_config.mutual_sample_rate
-    
     # Apply normalization if configured
     if feature_config.eda_normalize:
         # Normalize each channel separately
@@ -105,8 +105,9 @@ def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: A
         eps = 1e-8
         eda_signal = (eda_signal - mean) / (std + eps)
     
-    # Resample EDA to target sample rate if needed
-    if sample_rate != target_sr:
+    # Resample EDA to target sample rate if needed and if target_sample_rate is specified
+    target_sr = feature_config.eda_target_sample_rate
+    if target_sr is not None and sample_rate != target_sr:
         # Use torchaudio's resample function for each channel
         resampler = T.Resample(orig_freq=sample_rate, new_freq=target_sr)
         
@@ -118,6 +119,8 @@ def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: A
         
         # Stack channels back together
         eda_signal = torch.stack(resampled_channels)
+        # Update sample_rate for filtering
+        sample_rate = target_sr
     
     # Apply filters if configured
     if feature_config.filter_lowpass or feature_config.filter_highpass:
@@ -129,7 +132,7 @@ def preprocess_eda(eda_signal: torch.Tensor, sample_rate: int, feature_config: A
             
             # Convert to frequency domain
             fft_data = torch.fft.rfft(channel_data)
-            freqs = torch.fft.rfftfreq(len(channel_data), d=1.0/target_sr)
+            freqs = torch.fft.rfftfreq(len(channel_data), d=1.0/sample_rate)
             
             # Create filter mask
             mask = torch.ones_like(freqs, dtype=torch.float32)
