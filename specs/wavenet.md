@@ -71,9 +71,29 @@ Model Inputs:
 
 
 
-Architecture Hyperparameters: context_size_in_eda_steps, num_mfccs, in_channels, hidden_channels, out_channels, ???
+Architecture Hyperparameters: 
+- context_size_in_eda_steps
+- num_mfccs
+- audio_sample_rate
+- eda_sample_rate
+- mfcc_window_size
+- mfcc_hop_size
+- in_channels
+- hidden_channels
+- out_channels
+- ???
+
+Initialization:
+    What needs to be computed from the passed-in hyperparameters?
+    - spectral_frames_per_eda_step
+    - audio_time_steps_per_spectral_frame
+    - layers_per_stack
+    - num_stacks
+    - upsampling_factor
+    - downsampling_factor
 
 1-to-1 Conv:
+    Hyperparameters: channels, num_features (for eda these are (1,1))
     For audio: kernels should have size (channels, num_mfccs) 
     For EDA: kernels should have size (1, 1) (since there's one channel and one feature per timestep)
     They should slide step-by-step along time/frame dimension.
