@@ -150,7 +150,7 @@ def ensure_project_root():
 
 def get_read_only_files() -> List[str]:
     """
-    Get a list of read-only files including up to 5 configs/*.yml files and src/configs.py
+    Get a list of read-only files including up to 5 configs/*.yml files and configuration files
     """
     read_only_files = []
     
@@ -158,8 +158,10 @@ def get_read_only_files() -> List[str]:
     config_files = glob.glob("configs/*.yml")
     read_only_files.extend(config_files[:5])
     
-    # Add src/configs.py
+    # Add configuration files
     read_only_files.append("src/configs.py")
+    read_only_files.append("src/models/configs.py")
+    read_only_files.append("src/data/configs.py")
     
     return read_only_files
 
