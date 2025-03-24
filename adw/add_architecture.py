@@ -154,6 +154,9 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     # Create the architecture file path
     arch_file_path = Path(f"src/models/{arch_name}.py")
     
+    # Convert architecture name to CamelCase for class name
+    class_name = ''.join(word.capitalize() for word in arch_name.split('_'))
+    
     # Create the prompt for Claude
     prompt = f"""
     Based on the architecture description in the markdown file, please create a Python implementation file for the {arch_name} architecture.
@@ -164,6 +167,7 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     3. Be consistent with the existing codebase style
     4. Include all necessary imports
     5. Implement the architecture as described in the markdown file
+    6. Name the main architecture class "{class_name}" (in CamelCase)
     
     Please create the file at src/models/{arch_name}.py
     """
@@ -278,7 +282,7 @@ def create_example_configs(arch_name: str) -> None:
     # Create a configuration that will fail instantiation
     try:
         subprocess.run(
-            ["python", "adw/create_config.py", f"An invalid configuration for the {arch_name} architecture that will fail instantiation due to missing required parameters", "--name", f"{arch_name}_invalid"],
+            ["python", "adw/create_config.py", f"An invalid configuration for the {arch_name} architecture", "--name", f"{arch_name}_invalid"],
             check=True
         )
         print(f"✅ Created invalid {arch_name} configuration")
