@@ -2,6 +2,15 @@ from enum import Enum
 from pydantic import BaseModel, field_validator
 from typing import Dict, Any, Literal
 
+class GeneratorType(str, Enum):
+    pass
+
+class DownsamplerType(str, Enum):
+    pass
+
+class UpsamplerType(str, Enum):
+    residual_upsampler = "residual_upsampler"
+
 class ResidualUpsamplerConfig(BaseModel):
     """
     Configuration for the Residual Upsampler.
@@ -107,63 +116,3 @@ class ModelConfig(BaseModel):
     architecture: Literal["tcn", "wavenet", "residual_upsampler"]
     params: Dict[str, Any]
 
-    @field_validator('params')
-    @classmethod
-    def validate_params(cls, v, info):
-        """
-        Validates architecture-specific parameters for model configuration.
-        
-        This validator ensures that all required parameters for the selected neural network
-        architecture are present in the params dictionary. It enforces architecture-specific
-        schema validation by checking for the presence of mandatory parameters based on the
-        architecture type (tcn or wavenet).
-        
-        Architecture:
-            - Implements a Pydantic field validator pattern with architecture-specific validation
-            - Uses dictionary comprehension for efficient missing parameter detection
-            - Maintains O(n) time complexity where n is the number of required parameters
-            - Preserves input dictionary structure without modification when valid
-        
-        Parameters:
-            cls (Type[ModelConfig]): The ModelConfig class
-            v (Dict[str, Any]): The params dictionary to validate
-            info (ValidationInfo): Validation context containing the parent data
-        
-        Returns:
-            Dict[str, Any]: The validated params dictionary (unchanged if valid)
-        
-        Raises:
-            ValueError: If architecture is invalid or required parameters are missing
-                - When architecture is not 'tcn' or 'wavenet'
-                - When any required parameter for the specified architecture is missing
-        
-        Integration:
-            - Called automatically by Pydantic during ModelConfig instantiation
-            - Enables early validation before model construction attempts
-            - Provides detailed error messages identifying specific missing parameters
-            - Supports configuration loading from YAML with precise validation errors
-        
-        Limitations:
-            - Only validates parameter presence, not parameter types or value ranges
-            - Limited to two predefined architectures (tcn, wavenet)
-            - No validation for extraneous parameters that may be ignored
-            - Architecture-specific parameter lists must be updated when adding new architectures
-        """
-        architecture = info.data.get('architecture')
-        if architecture == 'tcn':
-            required_params = ["input_size", "output_size", "num_blocks", "num_channels", "kernel_size", "dropout"]
-        elif architecture == 'wavenet':
-            required_params = [
-                "num_stacks", "num_layers_per_stack", "residual_channels", "skip_channels",
-                "kernel_size", "dilation_base", "dropout_rate", "input_channels",
-                "output_channels", "use_bias"
-            ]
-        elif architecture == 'residual_upsampler':
-            required_params = ["upsampling_factor", "in_channels", "hidden_channels", "out_channels"]
-        else:
-            raise ValueError(f"Invalid model architecture: {architecture}")
-
-        missing = [key for key in required_params if key not in v]
-        if missing:
-            raise ValueError(f"Missing parameters for {architecture} model: {missing}")
-        return v
