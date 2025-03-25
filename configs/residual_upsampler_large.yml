@@ -1,0 +1,83 @@
+experiment_name: "ResidualUpsampler_Large"
+seed: 42
+
+model:
+  architecture: "residual_upsampler"
+  params:
+    upsampling_factor: 8
+    in_channels: 40
+    hidden_channels: 256
+    out_channels: 1
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.0001
+  weight_decay: 0.005
+  beta1: 0.9
+  beta2: 0.999
+  momentum: 0.0
+  warmup_steps: 500
+  warmup_ratio: 0.1
+  scheduler: "cosine"
+  gradient_clip_val: 1.0
+
+data:
+  train_datasets:
+    - hku956
+    - pmemo2019
+  val_datasets:
+    - hku956
+    - pmemo2019
+  test_datasets:
+    - hku956
+    - pmemo2019
+  batch_size: 64
+  num_workers: 8
+  prefetch_size: 4
+
+loss:
+  name: "mse"
+
+hardware:
+  device: "cuda"
+  precision: "bf16"
+  distributed: true
+  num_gpus: 2
+
+metrics:
+  compute_metrics: true
+  train_metrics:
+    - "loss"
+    - "mse"
+  val_metrics:
+    - "loss"
+    - "mse"
+    - "dtw"
+    - "frechet"
+  val_check_interval: 1.0
+  early_stopping: true
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0001
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_entity: null
+  wandb_run_name: "ResidualUpsampler_Large_Run"
+  wandb_tags:
+    - "residual_upsampler"
+    - "large"
+    - "best_performance"
+  log_every_n_steps: 50
+
+checkpoint:
+  save_top_k: 5
+  checkpoint_dir: "checkpoints/residual_upsampler_large"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  save_every_n_steps: 500
+  load_from_checkpoint: null
+
+train:
+  max_epochs: 200
+  accumulate_grad_batches: 1

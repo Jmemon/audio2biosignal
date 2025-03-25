@@ -89,7 +89,7 @@ class ModelConfig(BaseModel):
         - No support for custom or composite architectures
         - Architecture-specific parameters must be updated when adding new architectures
     """
-    architecture: Literal["tcn", "wavenet"]
+    architecture: Literal["tcn", "wavenet", "residual_upsampler"]
     params: Dict[str, Any]
 
     @field_validator('params')
@@ -143,6 +143,8 @@ class ModelConfig(BaseModel):
                 "kernel_size", "dilation_base", "dropout_rate", "input_channels",
                 "output_channels", "use_bias"
             ]
+        elif architecture == 'residual_upsampler':
+            required_params = ["upsampling_factor", "in_channels", "hidden_channels", "out_channels"]
         else:
             raise ValueError(f"Invalid model architecture: {architecture}")
 

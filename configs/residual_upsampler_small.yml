@@ -1,0 +1,72 @@
+experiment_name: "ResidualUpsampler_Small"
+seed: 42
+
+model:
+  architecture: "residual_upsampler"
+  params:
+    upsampling_factor: 2
+    in_channels: 40           # MFCC features
+    hidden_channels: 16
+    out_channels: 1           # EDA signal output
+
+optimizer:
+  name: "adamw"
+  learning_rate: 0.001
+  weight_decay: 0.01
+  beta1: 0.9
+  beta2: 0.999
+  momentum: 0.0
+  warmup_steps: 0
+  warmup_ratio: 0.0
+  scheduler: "constant"
+  gradient_clip_val: 1.0
+
+data:
+  train_datasets:
+    - hku956
+    - pmemo2019
+  val_datasets:
+    - hku956
+  test_datasets:
+    - pmemo2019
+  batch_size: 16
+  num_workers: 2
+  prefetch_size: 1
+
+loss:
+  name: "mse"
+
+hardware:
+  device: "mps"      # Adjust to your available device if needed
+  precision: "fp32"  # MPS supports fp32 only
+  distributed: False
+  num_gpus: 1
+
+metrics:
+  compute_metrics: false
+  train_metrics:
+    - "loss"
+  val_metrics:
+    - "loss"
+
+logging:
+  wandb_project: "audio2eda"
+  wandb_entity: null
+  wandb_run_name: "ResidualUpsampler_Small_Run"
+  wandb_tags:
+    - "small"
+    - "residual_upsampler"
+  log_every_n_steps: 50
+
+checkpoint:
+  save_top_k: 1
+  checkpoint_dir: "checkpoints/residual_upsampler_small"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  save_every_n_steps: 500
+  load_from_checkpoint: null
+
+train:
+  max_epochs: 10
+  accumulate_grad_batches: 1

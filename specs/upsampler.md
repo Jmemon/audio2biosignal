@@ -8,14 +8,15 @@ class ResidualUpsamplerConfig(BaseModel):
     hidden_channels: int
     out_channels: int
 
+
 ## Architecture – Residual Upsampling
 Use PyTorch to define the architecture for the upsampler.
 
 class ResidualUpsamplerBlock(nn.Module):
     def __init__(self, channels: int, upsampling_factor: float):
-        2 1d conv layers with kernel size 5 and stride 1, in_channels = channels, out_channels = channels
-        nn.Upsample(scale_factor=upsampling_factor)
-        LeakyRelu(0.2)
+        Initialize 2 1d conv layers with kernel size 5 and stride 1, in_channels = channels, out_channels = channels
+        Initialize an upsample layer with scale_factor = upsampling_factor
+        Initialize a leaky relu layer with negative_slope = 0.2
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         Pass x through layers in init
