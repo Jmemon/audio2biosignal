@@ -169,9 +169,8 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     
     # Create the prompt for Claude
     prompt = f"""
-    Based on the architecture description in the markdown file, please create a Python implementation file for the {arch_name} architecture.
-    
-    The implementation should:
+    Based on the architecture description in the markdown file, please ONLY ADD the architecture code to the Python implementation file, and NOT the config. The architecture should:
+
     1. Follow PyTorch best practices
     2. Include comprehensive docstrings
     3. Be consistent with the existing codebase style
@@ -207,13 +206,9 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     """
     # Create the prompt for Claude
     prompt = f"""
-    Please update the src/architectures/configs.py file to support the new {arch_name} architecture.
-    
-    You need to:
-    1. Add "{arch_name}" to the architecture Literal list in ModelConfig
-    2. Add a case in the validate_params method to validate the parameters for the {arch_name} architecture
-    
-    The required parameters should be extracted from the architecture description in the markdown file.
+    Please ONLY ADD the config from the markdown for the new {arch_name} architecture to src/architectures/configs.py,
+    and also add a type in whichever enum corresponds to this architecture.
+    Do not add or modify any other architecture or config in this file.
     """
     
     # Initialize aider Coder
