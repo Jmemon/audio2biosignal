@@ -52,8 +52,15 @@ def main() -> None:
         required=True,
         help="Name of the architecture (used for filenames)"
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="claude-3-7-sonnet-default",
+        help="model to use with aider"
+    )
     
     args = parser.parse_args()
+    model_choice = args.model
     
     # Normalize the architecture name (lowercase, no spaces)
     arch_name = args.name.lower().replace(" ", "_")
@@ -76,10 +83,10 @@ def main() -> None:
     print(f"✅ Architecture description validated for {arch_name}")
     
     # Create the architecture implementation file
-    create_architecture_file(arch_name, markdown_content, markdown_path)
+    create_architecture_file(arch_name, markdown_content, markdown_path, model_choice)
     
     # Update the configs.py file
-    update_configs_file(arch_name, markdown_content, markdown_path)
+    update_configs_file(arch_name, markdown_content, markdown_path, model_choice)
     
     # Create tests for the new architecture
     create_tests(arch_name)
@@ -143,7 +150,7 @@ def validate_architecture_description(markdown_content: str) -> bool:
         print(f"Error validating architecture description: {e}")
         return False
 
-def create_architecture_file(arch_name: str, markdown_content: str, markdown_path: Path) -> None:
+def create_architecture_file(arch_name: str, markdown_content: str, markdown_path: Path, model_choice: str) -> None:
     """
     Create the architecture implementation file using Claude.
     
@@ -174,7 +181,7 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     """
     
     # Initialize aider Coder
-    model = Model("claude-3-7-sonnet-latest")
+    model = Model(model_choice)
     coder = Coder.create(
         main_model=model,
         edit_format="diff",
@@ -193,7 +200,7 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     assert arch_file_path.exists(), f"Error: Architecture file {arch_file_path} was not created"
     print(f"✅ Created architecture implementation file: {arch_file_path}")
 
-def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Path) -> None:
+def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Path, model_choice: str) -> None:
     """
     Update the configs.py file to support the new architecture.
     
@@ -214,7 +221,7 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     """
     
     # Initialize aider Coder
-    model = Model("claude-3-7-sonnet-latest")
+    model = Model(model_choice)
     coder = Coder.create(
         main_model=model,
         edit_format="diff",
