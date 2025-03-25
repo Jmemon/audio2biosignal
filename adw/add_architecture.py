@@ -89,10 +89,10 @@ def main() -> None:
     update_configs_file(arch_name, markdown_content, markdown_path, model_choice)
     
     # Create tests for the new architecture
-    create_tests(arch_name)
+    create_tests(arch_name, model_choice)
     
     # Create example configurations
-    create_example_configs(arch_name)
+    create_example_configs(arch_name, model_choice)
     
     print(f"\n✅ Successfully added {arch_name} architecture to the project!")
 
@@ -235,7 +235,7 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     
     print(f"✅ Updated configs.py to support {arch_name} architecture")
 
-def create_tests(arch_name: str) -> None:
+def create_tests(arch_name: str, model_choice: str) -> None:
     """
     Create comprehensive tests for the new architecture.
     
@@ -247,14 +247,14 @@ def create_tests(arch_name: str) -> None:
     # Run the create_tests.py script
     try:
         subprocess.run(
-            ["python", "adw/create_tests.py", f"src/models/{arch_name}.py:{arch_name}"],
+            ["python", "adw/create_tests.py", f"src/models/{arch_name}.py:{arch_name}", "--model", model_choice],
             check=True
         )
         print(f"✅ Created tests for {arch_name} architecture")
     except subprocess.CalledProcessError as e:
         print(f"Error creating tests: {e}")
 
-def create_example_configs(arch_name: str) -> None:
+def create_example_configs(arch_name: str, model_choice: str) -> None:
     """
     Create example configurations for the new architecture.
     
@@ -266,7 +266,7 @@ def create_example_configs(arch_name: str) -> None:
     # Create a small version of the architecture
     try:
         subprocess.run(
-            ["python", "adw/create_config.py", f"A small version of the {arch_name} architecture with minimal parameters", "--name", f"{arch_name}_small"],
+            ["python", "adw/create_config.py", f"A small version of the {arch_name} architecture with minimal parameters", "--name", f"{arch_name}_small", "--model", model_choice],
             check=True
         )
         print(f"✅ Created small {arch_name} configuration")
@@ -276,7 +276,7 @@ def create_example_configs(arch_name: str) -> None:
     # Create a big version of the architecture
     try:
         subprocess.run(
-            ["python", "adw/create_config.py", f"A large version of the {arch_name} architecture with maximal parameters for best performance", "--name", f"{arch_name}_large"],
+            ["python", "adw/create_config.py", f"A large version of the {arch_name} architecture with maximal parameters for best performance", "--name", f"{arch_name}_large", "--model", model_choice],
             check=True
         )
         print(f"✅ Created large {arch_name} configuration")
@@ -286,7 +286,7 @@ def create_example_configs(arch_name: str) -> None:
     # Create a configuration that will fail instantiation
     try:
         subprocess.run(
-            ["python", "adw/create_config.py", f"An invalid configuration for the {arch_name} architecture", "--name", f"{arch_name}_invalid"],
+            ["python", "adw/create_config.py", f"An invalid configuration for the {arch_name} architecture", "--name", f"{arch_name}_invalid", "--model", model_choice],
             check=True
         )
         print(f"✅ Created invalid {arch_name} configuration")
