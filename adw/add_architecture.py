@@ -164,6 +164,8 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     
     # Convert architecture name to CamelCase for class name
     class_name = ''.join(word.capitalize() for word in arch_name.split('_'))
+    arch_file_path.write_text("", encoding='utf-8')
+    print(f"Created empty architecture file: {arch_file_path}")
     
     # Create the prompt for Claude
     prompt = f"""
@@ -176,14 +178,13 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     4. Include all necessary imports
     5. Implement the architecture as described in the markdown file
     6. Name the main architecture class "{class_name}" (in CamelCase)
-    
-    Please create the file at src/models/{arch_name}.py
     """
     
     # Initialize aider Coder
     model = Model(model_choice)
     coder = Coder.create(
         main_model=model,
+        fnames=[arch_file_path],
         edit_format="diff",
         read_only_fnames=[markdown_path],
         suggest_shell_commands=False,
@@ -195,10 +196,6 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     
     # Run the coder with the prompt
     coder.run(prompt)
-    
-    # Verify the file was created
-    assert arch_file_path.exists(), f"Error: Architecture file {arch_file_path} was not created"
-    print(f"✅ Created architecture implementation file: {arch_file_path}")
 
 def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Path, model_choice: str) -> None:
     """
