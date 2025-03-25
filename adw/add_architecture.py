@@ -192,10 +192,9 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
         io=InputOutput(yes=True)
     )
     
-    print(f"\nCreating architecture implementation file: src/models/{arch_name}.py")
-    
     # Run the coder with the prompt
     coder.run(prompt)
+    print(f"Architecture implemented in: {arch_file_path}")
 
 def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Path, model_choice: str) -> None:
     """
