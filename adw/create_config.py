@@ -33,6 +33,12 @@ def main():
         "--name", "-n", 
         help="Name for the experiment (used for the config filename)"
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="MIRROR add_architecture",
+        help="Model to use for configuration generation"
+    )
     
     args = parser.parse_args()
     
@@ -50,7 +56,7 @@ def main():
     read_only_files = get_read_only_files()
     
     # Create aider Coder instance
-    model = Model("sonnet")
+    model = Model(args.model)
     coder = Coder.create(
         main_model=model,
         edit_format="diff",

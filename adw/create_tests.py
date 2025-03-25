@@ -62,7 +62,7 @@ def main():
     dependents = find_dependent_files(filepath, target_spec)
     
     # Set up the AI model
-    model = Model("claude-3-7-sonnet-latest")
+    model = Model(args.model)
     print(f"\nInitialized model: {model}")
     print(f"\nTarget file: {filepath}")
     print(f"Target specification: {target_spec}")
@@ -171,6 +171,12 @@ def parse_arguments() -> argparse.Namespace:
         "description",
         type=str,
         help="Description of what class/method/function to test and the filepath it's located in"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="MIRROR add_architecture",
+        help="Model to use for test generation"
     )
     return parser.parse_args()
 
