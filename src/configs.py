@@ -6,7 +6,7 @@ from src.data.configs import (
     DatasetType, DatasetConfig, HKU956Config, 
     PMEmo2019Config, AudioEDAFeatureConfig
 )
-from src.models.configs import ModelConfig
+from src.architectures.configs import ModelConfig
 
 """
 This module provides configuration classes for audio-to-biosignal modeling experiments.
