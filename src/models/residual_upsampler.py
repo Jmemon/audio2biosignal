@@ -3,21 +3,6 @@ import torch
 from torch import nn
 from pydantic import BaseModel
 
-class ResidualUpsamplerConfig(BaseModel):
-    """
-    Configuration for the Residual Upsampler.
-    
-    Attributes:
-        upsampling_factor (float): The factor by which to upsample.
-        in_channels (int): Number of input channels.
-        hidden_channels (int): Number of channels in the hidden layers.
-        out_channels (int): Number of output channels.
-    """
-    upsampling_factor: float
-    in_channels: int
-    hidden_channels: int
-    out_channels: int
-
 class ResidualUpsamplerBlock(nn.Module):
     """
     Residual Upsampler Block that performs upsampling with residual connections.
