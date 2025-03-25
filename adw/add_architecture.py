@@ -221,7 +221,8 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
         fnames=["src/models/configs.py"],
         read_only_fnames=[markdown_path],
         suggest_shell_commands=False,
-        auto_commits=False
+        auto_commits=False,
+        io=InputOutput(yes=True)
     )
     
     print(f"\nUpdating configs.py to support {arch_name} architecture")
