@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import anthropic
 from aider.coders import Coder
 from aider.models import Model
+from aider.io import InputOutput
 
 def main() -> None:
     """
@@ -179,7 +180,8 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
         edit_format="diff",
         read_only_fnames=[markdown_path],
         suggest_shell_commands=False,
-        auto_commits=False
+        auto_commits=False,
+        io=InputOutput(yes=True)
     )
     
     print(f"\nCreating architecture implementation file: src/models/{arch_name}.py")
@@ -188,10 +190,8 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
     coder.run(prompt)
     
     # Verify the file was created
-    if not arch_file_path.exists():
-        print(f"Warning: Architecture file {arch_file_path} was not created")
-    else:
-        print(f"✅ Created architecture implementation file: {arch_file_path}")
+    assert arch_file_path.exists(), f"Error: Architecture file {arch_file_path} was not created"
+    print(f"✅ Created architecture implementation file: {arch_file_path}")
 
 def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Path) -> None:
     """
