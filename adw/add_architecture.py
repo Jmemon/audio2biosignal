@@ -160,7 +160,7 @@ def create_architecture_file(arch_name: str, markdown_content: str, markdown_pat
         markdown_path: Path to the markdown file
     """
     # Create the architecture file path
-    arch_file_path = Path(f"src/models/{arch_name}.py")
+    arch_file_path = Path(f"src/architectures/{arch_name}.py")
     
     # Convert architecture name to CamelCase for class name
     class_name = ''.join(word.capitalize() for word in arch_name.split('_'))
@@ -207,7 +207,7 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     """
     # Create the prompt for Claude
     prompt = f"""
-    Please update the src/models/configs.py file to support the new {arch_name} architecture.
+    Please update the src/architectures/configs.py file to support the new {arch_name} architecture.
     
     You need to:
     1. Add "{arch_name}" to the architecture Literal list in ModelConfig
@@ -221,7 +221,7 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     coder = Coder.create(
         main_model=model,
         edit_format="diff",
-        fnames=["src/models/configs.py"],
+        fnames=["src/architectures/configs.py"],
         read_only_fnames=[markdown_path],
         suggest_shell_commands=False,
         auto_commits=False,
@@ -247,7 +247,7 @@ def create_tests(arch_name: str, model_choice: str) -> None:
     # Run the create_tests.py script
     try:
         subprocess.run(
-            ["python", "adw/create_tests.py", f"src/models/{arch_name}.py:{arch_name}", "--model", model_choice],
+            ["python", "adw/create_tests.py", f"src/architectures/{arch_name}.py:{arch_name}", "--model", model_choice],
             check=True
         )
         print(f"✅ Created tests for {arch_name} architecture")

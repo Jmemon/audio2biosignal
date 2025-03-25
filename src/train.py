@@ -11,8 +11,8 @@ from src.configs import RunConfig, AudioEDAFeatureConfig
 from src.optimizer import OptimizerBuilder
 from src.loss import LossBuilder
 from src.data.dataloader import DataLoaderBuilder
-from src.models.tcn import TCN
-from src.models.wavenet import Wavenet
+from src.architectures.tcn import TCN
+from src.architectures.wavenet import Wavenet
 from src.metrics import MetricsCalculator
 
 def train(cfg: RunConfig) -> Path:

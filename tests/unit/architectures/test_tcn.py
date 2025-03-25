@@ -14,8 +14,8 @@ This module provides comprehensive testing for:
 import pytest
 import torch
 import torch.nn as nn
-from src.models.tcn import TCNBlock, TCN
-from src.models.wavenet import WavenetStack, Wavenet
+from src.architectures.tcn import TCNBlock, TCN
+from src.architectures.wavenet import WavenetStack, Wavenet
 
 
 # === FIXTURES ===
@@ -1282,7 +1282,7 @@ def standard_wavenet_stack():
     Returns:
         WavenetStack: A WavenetStack with standard test configuration
     """
-    from src.models.wavenet import WavenetStack
+    from src.architectures.wavenet import WavenetStack
     return WavenetStack(
         num_layers_per_stack=3,
         residual_channels=8,
@@ -1988,7 +1988,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN skip connections should be properly summed
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create a simplified stack for testing skip connections
@@ -2026,7 +2026,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN gated activation (tanh * sigmoid) should be applied
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create a simplified stack for testing gated activation
@@ -2082,7 +2082,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN residual connections should be properly added
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create a simplified stack for testing residual connections
@@ -2115,7 +2115,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN output should maintain sequence length despite dilations
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Test with different dilation bases
         for dilation_base in [1, 2, 4]:
@@ -2144,7 +2144,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed in train vs eval modes
         THEN dropout should affect outputs in train mode but not eval mode
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Create two identical stacks with high dropout
         stack_train = WavenetStack(
@@ -2203,7 +2203,7 @@ class TestWavenetStackForward:
         WHEN backward pass is executed
         THEN gradients should flow to all parameters
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create input and target
@@ -2247,7 +2247,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN it should handle the values without numerical instability
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Create stack with standard parameters
         stack = WavenetStack(
@@ -2295,7 +2295,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN it should handle the empty sequence appropriately
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Create stack with minimal kernel size to handle empty sequence
         stack = WavenetStack(
@@ -2325,7 +2325,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN each layer should properly handle the changing dimensions
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create a custom stack with manually controlled layers for testing
@@ -2373,7 +2373,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN all components should be called in the correct order
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Create a simplified stack for testing execution flow
         stack = WavenetStack(
@@ -2416,7 +2416,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN it should process correctly
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         
         # Create single sample input
         input_tensor = torch.randn(1, 4, 16)
@@ -2446,7 +2446,7 @@ class TestWavenetStackForward:
         WHEN forward pass is executed
         THEN each layer should process the output of the previous layer
         """
-        from src.models.wavenet import WavenetStack
+        from src.architectures.wavenet import WavenetStack
         import torch.nn as nn
         
         # Create a stack with identifiable layers

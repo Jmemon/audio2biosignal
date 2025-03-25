@@ -2,7 +2,7 @@ import math
 import torch
 from torch import nn
 from pydantic import BaseModel
-from src.models.configs import ResidualUpsamplerConfig
+from src.architectures.configs import ResidualUpsamplerConfig
 
 class ResidualUpsamplerBlock(nn.Module):
     """

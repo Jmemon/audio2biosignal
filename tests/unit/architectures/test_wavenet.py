@@ -12,7 +12,7 @@ This module provides comprehensive testing for:
 import pytest
 import torch
 import torch.nn as nn
-from src.models.wavenet import WavenetStack, Wavenet
+from src.architectures.wavenet import WavenetStack, Wavenet
 
 
 class TestWavenetStackInitialization:

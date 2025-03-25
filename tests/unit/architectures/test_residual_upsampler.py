@@ -11,7 +11,7 @@ import math
 import torch
 import pytest
 from torch import nn
-from src.models.residual_upsampler import ResidualUpsampler, ResidualUpsamplerConfig
+from src.architectures.residual_upsampler import ResidualUpsampler, ResidualUpsamplerConfig
 
 class TestResidualUpsamplerInitialization:
     """Tests covering object initialization and configuration."""
