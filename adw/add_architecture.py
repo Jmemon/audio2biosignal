@@ -208,6 +208,7 @@ def update_configs_file(arch_name: str, markdown_content: str, markdown_path: Pa
     prompt = f"""
     Please ONLY ADD the config from the markdown for the new {arch_name} architecture to src/architectures/configs.py,
     and also add a type in whichever enum corresponds to this architecture.
+    The configuration should use Pydantic BaseModel for validation and type checking.
     Do not add or modify any other architecture or config in this file.
     """
     
